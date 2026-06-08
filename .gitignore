@@ -1,9 +1,14 @@
 # Segredos / configuração local
 .env
 
-# Dump de banco de dados (dados reais / migrados)
-db/dump/*
-!db/dump/.gitkeep
+# Dump de banco de dados legado (só referência, não carregado automaticamente)
+db/legado/*
+!db/legado/.gitkeep
 
 # Backups locais criados durante depuração
 *.bak
+
+# Dependências e builds (frontend / backend)
+node_modules/
+dist/
+build/

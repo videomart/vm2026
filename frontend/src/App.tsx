@@ -1,0 +1,77 @@
+import { useEffect, useState } from 'react'
+import { Link, Route, Routes } from 'react-router-dom'
+import './App.css'
+import { Login } from './pages/Login'
+import type { Usuario } from './pages/Login'
+import { ListaClientes } from './pages/clientes/ListaClientes'
+import { FormularioCliente } from './pages/clientes/FormularioCliente'
+
+type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
+
+function App() {
+  const [status, setStatus] = useState<SessaoStatus>('verificando')
+  const [usuario, setUsuario] = useState<Usuario | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/me', { credentials: 'include' })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.usuario) {
+          setUsuario(data.usuario)
+          setStatus('logado')
+        } else {
+          setStatus('deslogado')
+        }
+      })
+      .catch(() => setStatus('deslogado'))
+  }, [])
+
+  function handleLogin(usuarioLogado: Usuario) {
+    setUsuario(usuarioLogado)
+    setStatus('logado')
+  }
+
+  async function handleLogout() {
+    await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+    setUsuario(null)
+    setStatus('deslogado')
+  }
+
+  if (status === 'verificando') {
+    return (
+      <main>
+        <p>Carregando...</p>
+      </main>
+    )
+  }
+
+  if (status === 'deslogado' || !usuario) {
+    return <Login onLogin={handleLogin} />
+  }
+
+  return (
+    <main>
+      <header>
+        <h1>vm2026</h1>
+        <nav>
+          <Link to="/clientes">Clientes</Link>
+        </nav>
+        <p>
+          Olá, <strong>{usuario.nome}</strong> ({usuario.papel}){' '}
+          <button type="button" onClick={handleLogout}>
+            Sair
+          </button>
+        </p>
+      </header>
+
+      <Routes>
+        <Route path="/" element={<ListaClientes />} />
+        <Route path="/clientes" element={<ListaClientes />} />
+        <Route path="/clientes/novo" element={<FormularioCliente />} />
+        <Route path="/clientes/:id/editar" element={<FormularioCliente />} />
+      </Routes>
+    </main>
+  )
+}
+
+export default App

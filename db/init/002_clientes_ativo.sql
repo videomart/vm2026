@@ -1,0 +1,2 @@
+ALTER TABLE clientes
+  ADD COLUMN ativo TINYINT(1) NOT NULL DEFAULT 1 AFTER observacoes;

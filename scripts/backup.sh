@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Gera um dump do banco do container "db" para db/dump/<timestamp>.sql
+# Gera um dump do banco do container "db" para db/legado/<timestamp>.sql
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 source .env
 
-OUT_DIR="db/dump"
+OUT_DIR="db/legado"
 OUT_FILE="$OUT_DIR/backup_$(date +%Y%m%d_%H%M%S).sql"
 mkdir -p "$OUT_DIR"
 
