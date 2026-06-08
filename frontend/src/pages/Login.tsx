@@ -46,37 +46,41 @@ export function Login({ onLogin }: LoginProps) {
   }
 
   return (
-    <main>
-      <h1>vm2026</h1>
-      <h2>Entrar</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="email">E-mail</label>
-          <br />
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="senha">Senha</label>
-          <br />
-          <input
-            id="senha"
-            type="password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            required
-          />
-        </div>
-        {erro && <p role="alert">{erro}</p>}
-        <button type="submit" disabled={enviando}>
-          {enviando ? 'Entrando...' : 'Entrar'}
-        </button>
-      </form>
-    </main>
+    <div className="tela-login">
+      <div className="cartao-login">
+        <h1>vm2026</h1>
+        <h2>Entrar</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="campo">
+            <label htmlFor="email">E-mail</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="senha">Senha</label>
+            <input
+              id="senha"
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              required
+            />
+          </div>
+          {erro && (
+            <p className="alerta-erro" role="alert">
+              {erro}
+            </p>
+          )}
+          <button className="botao" type="submit" disabled={enviando} style={{ width: '100%' }}>
+            {enviando ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+      </div>
+    </div>
   )
 }

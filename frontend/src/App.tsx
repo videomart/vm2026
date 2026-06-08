@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
-import './App.css'
 import { Login } from './pages/Login'
 import type { Usuario } from './pages/Login'
 import { ListaClientes } from './pages/clientes/ListaClientes'
@@ -50,27 +49,31 @@ function App() {
   }
 
   return (
-    <main>
-      <header>
+    <div className="layout-app">
+      <header className="cabecalho">
         <h1>vm2026</h1>
-        <nav>
+        <nav className="cabecalho-menu">
           <Link to="/clientes">Clientes</Link>
         </nav>
-        <p>
-          Olá, <strong>{usuario.nome}</strong> ({usuario.papel}){' '}
-          <button type="button" onClick={handleLogout}>
+        <div className="cabecalho-usuario">
+          <span>
+            Olá, <strong>{usuario.nome}</strong> ({usuario.papel})
+          </span>
+          <button className="botao-secundario" type="button" onClick={handleLogout}>
             Sair
           </button>
-        </p>
+        </div>
       </header>
 
-      <Routes>
-        <Route path="/" element={<ListaClientes />} />
-        <Route path="/clientes" element={<ListaClientes />} />
-        <Route path="/clientes/novo" element={<FormularioCliente />} />
-        <Route path="/clientes/:id/editar" element={<FormularioCliente />} />
-      </Routes>
-    </main>
+      <div className="conteudo">
+        <Routes>
+          <Route path="/" element={<ListaClientes />} />
+          <Route path="/clientes" element={<ListaClientes />} />
+          <Route path="/clientes/novo" element={<FormularioCliente />} />
+          <Route path="/clientes/:id/editar" element={<FormularioCliente />} />
+        </Routes>
+      </div>
+    </div>
   )
 }
 

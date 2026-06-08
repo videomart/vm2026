@@ -86,115 +86,114 @@ export function FormularioCliente() {
     <section>
       <h2>{editando ? 'Editar cliente' : 'Novo cliente'}</h2>
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="razao_social">Razão social *</label>
-          <br />
-          <input
-            id="razao_social"
-            value={campos.razao_social}
-            onChange={(e) => atualizarCampo('razao_social', e.target.value)}
-            required
-          />
+        <div className="grade-formulario">
+          <div className="campo campo-largo">
+            <label htmlFor="razao_social">Razão social *</label>
+            <input
+              id="razao_social"
+              value={campos.razao_social}
+              onChange={(e) => atualizarCampo('razao_social', e.target.value)}
+              required
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="nome_fantasia">Nome fantasia</label>
+            <input
+              id="nome_fantasia"
+              value={campos.nome_fantasia ?? ''}
+              onChange={(e) => atualizarCampo('nome_fantasia', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="cnpj_cpf">CNPJ/CPF</label>
+            <input
+              id="cnpj_cpf"
+              value={campos.cnpj_cpf ?? ''}
+              onChange={(e) => atualizarCampo('cnpj_cpf', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="email">E-mail</label>
+            <input
+              id="email"
+              type="email"
+              value={campos.email ?? ''}
+              onChange={(e) => atualizarCampo('email', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="telefone">Telefone</label>
+            <input
+              id="telefone"
+              value={campos.telefone ?? ''}
+              onChange={(e) => atualizarCampo('telefone', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="whatsapp">WhatsApp</label>
+            <input
+              id="whatsapp"
+              value={campos.whatsapp ?? ''}
+              onChange={(e) => atualizarCampo('whatsapp', e.target.value)}
+            />
+          </div>
+          <div className="campo campo-largo">
+            <label htmlFor="endereco">Endereço</label>
+            <input
+              id="endereco"
+              value={campos.endereco ?? ''}
+              onChange={(e) => atualizarCampo('endereco', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="cidade">Cidade</label>
+            <input
+              id="cidade"
+              value={campos.cidade ?? ''}
+              onChange={(e) => atualizarCampo('cidade', e.target.value)}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="uf">UF</label>
+            <input
+              id="uf"
+              maxLength={2}
+              value={campos.uf ?? ''}
+              onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
+            />
+          </div>
+          <div className="campo">
+            <label htmlFor="cep">CEP</label>
+            <input
+              id="cep"
+              value={campos.cep ?? ''}
+              onChange={(e) => atualizarCampo('cep', e.target.value)}
+            />
+          </div>
+          <div className="campo campo-largo">
+            <label htmlFor="observacoes">Observações</label>
+            <textarea
+              id="observacoes"
+              value={campos.observacoes ?? ''}
+              onChange={(e) => atualizarCampo('observacoes', e.target.value)}
+            />
+          </div>
         </div>
-        <div>
-          <label htmlFor="nome_fantasia">Nome fantasia</label>
-          <br />
-          <input
-            id="nome_fantasia"
-            value={campos.nome_fantasia ?? ''}
-            onChange={(e) => atualizarCampo('nome_fantasia', e.target.value)}
-          />
+
+        {erro && (
+          <p className="alerta-erro" role="alert">
+            {erro}
+          </p>
+        )}
+
+        <div className="barra-acoes-formulario">
+          <button className="botao" type="submit" disabled={salvando}>
+            {salvando ? 'Salvando...' : 'Salvar'}
+          </button>
+          <button className="botao-secundario" type="button" onClick={() => navigate('/clientes')}>
+            Cancelar
+          </button>
         </div>
-        <div>
-          <label htmlFor="cnpj_cpf">CNPJ/CPF</label>
-          <br />
-          <input
-            id="cnpj_cpf"
-            value={campos.cnpj_cpf ?? ''}
-            onChange={(e) => atualizarCampo('cnpj_cpf', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="email">E-mail</label>
-          <br />
-          <input
-            id="email"
-            type="email"
-            value={campos.email ?? ''}
-            onChange={(e) => atualizarCampo('email', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="telefone">Telefone</label>
-          <br />
-          <input
-            id="telefone"
-            value={campos.telefone ?? ''}
-            onChange={(e) => atualizarCampo('telefone', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="whatsapp">WhatsApp</label>
-          <br />
-          <input
-            id="whatsapp"
-            value={campos.whatsapp ?? ''}
-            onChange={(e) => atualizarCampo('whatsapp', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="endereco">Endereço</label>
-          <br />
-          <input
-            id="endereco"
-            value={campos.endereco ?? ''}
-            onChange={(e) => atualizarCampo('endereco', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="cidade">Cidade</label>
-          <br />
-          <input
-            id="cidade"
-            value={campos.cidade ?? ''}
-            onChange={(e) => atualizarCampo('cidade', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="uf">UF</label>
-          <br />
-          <input
-            id="uf"
-            maxLength={2}
-            value={campos.uf ?? ''}
-            onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
-          />
-        </div>
-        <div>
-          <label htmlFor="cep">CEP</label>
-          <br />
-          <input
-            id="cep"
-            value={campos.cep ?? ''}
-            onChange={(e) => atualizarCampo('cep', e.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="observacoes">Observações</label>
-          <br />
-          <textarea
-            id="observacoes"
-            value={campos.observacoes ?? ''}
-            onChange={(e) => atualizarCampo('observacoes', e.target.value)}
-          />
-        </div>
-        {erro && <p role="alert">{erro}</p>}
-        <button type="submit" disabled={salvando}>
-          {salvando ? 'Salvando...' : 'Salvar'}
-        </button>{' '}
-        <button type="button" onClick={() => navigate('/clientes')}>
-          Cancelar
-        </button>
       </form>
     </section>
   )

@@ -54,73 +54,105 @@ export function ListaClientes() {
 
   return (
     <section>
-      <h2>Clientes</h2>
-      <p>
-        <Link to="/clientes/novo">+ Novo cliente</Link>
-      </p>
-      <form onSubmit={handleBusca}>
+      <div className="cabecalho-secao">
+        <h2>Clientes</h2>
+        <Link className="botao" to="/clientes/novo">
+          + Novo cliente
+        </Link>
+      </div>
+
+      <form className="barra-busca" onSubmit={handleBusca}>
         <input
           type="search"
           placeholder="Buscar por razão social, fantasia ou CNPJ/CPF"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
-        <button type="submit">Buscar</button>{' '}
-        <label>
+        <button className="botao-secundario" type="submit">
+          Buscar
+        </button>
+        <label className="opcao-checkbox">
           <input
             type="checkbox"
             checked={mostrarInativos}
             onChange={(e) => setMostrarInativos(e.target.checked)}
-          />{' '}
+          />
           Mostrar inativos
         </label>
       </form>
 
-      {erro && <p role="alert">{erro}</p>}
-      {carregando && <p>Carregando...</p>}
-
-      {!carregando && clientes.length === 0 && <p>Nenhum cliente encontrado.</p>}
-
-      {!carregando && clientes.length > 0 && (
-        <table>
-          <thead>
-            <tr>
-              <th>Razão social</th>
-              <th>Nome fantasia</th>
-              <th>CNPJ/CPF</th>
-              <th>Cidade/UF</th>
-              <th>Status</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {clientes.map((cliente) => (
-              <tr key={cliente.id}>
-                <td>{cliente.razao_social}</td>
-                <td>{cliente.nome_fantasia ?? '—'}</td>
-                <td>{cliente.cnpj_cpf ?? '—'}</td>
-                <td>
-                  {cliente.cidade ?? '—'}
-                  {cliente.uf ? `/${cliente.uf}` : ''}
-                </td>
-                <td>{cliente.ativo ? 'Ativo' : 'Inativo'}</td>
-                <td>
-                  <Link to={`/clientes/${cliente.id}/editar`}>Editar</Link>{' '}
-                  {cliente.ativo ? (
-                    <button type="button" onClick={() => inativar(cliente)}>
-                      Inativar
-                    </button>
-                  ) : (
-                    <button type="button" onClick={() => reativar(cliente)}>
-                      Reativar
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {erro && (
+        <p className="alerta-erro" role="alert">
+          {erro}
+        </p>
       )}
+
+      <div className="tabela-wrapper">
+        {carregando && <p className="estado-vazio">Carregando...</p>}
+
+        {!carregando && clientes.length === 0 && (
+          <p className="estado-vazio">Nenhum cliente encontrado.</p>
+        )}
+
+        {!carregando && clientes.length > 0 && (
+          <table className="tabela">
+            <thead>
+              <tr>
+                <th>Razão social</th>
+                <th>Nome fantasia</th>
+                <th>CNPJ/CPF</th>
+                <th>Cidade/UF</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clientes.map((cliente) => (
+                <tr key={cliente.id}>
+                  <td>{cliente.razao_social}</td>
+                  <td>{cliente.nome_fantasia ?? '—'}</td>
+                  <td>{cliente.cnpj_cpf ?? '—'}</td>
+                  <td>
+                    {cliente.cidade ?? '—'}
+                    {cliente.uf ? `/${cliente.uf}` : ''}
+                  </td>
+                  <td>
+                    {cliente.ativo ? (
+                      <span className="badge badge-ativo">Ativo</span>
+                    ) : (
+                      <span className="badge badge-inativo">Inativo</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="acoes">
+                      <Link className="botao-link" to={`/clientes/${cliente.id}/editar`}>
+                        Editar
+                      </Link>
+                      {cliente.ativo ? (
+                        <button
+                          className="botao-perigo"
+                          type="button"
+                          onClick={() => inativar(cliente)}
+                        >
+                          Inativar
+                        </button>
+                      ) : (
+                        <button
+                          className="botao-secundario"
+                          type="button"
+                          onClick={() => reativar(cliente)}
+                        >
+                          Reativar
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </section>
   )
 }
