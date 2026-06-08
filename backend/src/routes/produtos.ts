@@ -1,0 +1,109 @@
+import { Router } from 'express'
+import { pool } from '../db'
+import { requireAuth } from '../auth/middleware.js'
+
+export const produtosRouter = Router()
+
+produtosRouter.use(requireAuth)
+
+const CAMPOS_EDITAVEIS = [
+  'modelo',
+  'descricao',
+  'marca',
+  'categoria',
+  'preco_custo',
+  'preco_venda',
+  'peso',
+] as const
+
+type CampoEditavel = (typeof CAMPOS_EDITAVEIS)[number]
+
+function dadosProduto(body: Record<string, unknown>) {
+  const dados: Partial<Record<CampoEditavel, unknown>> = {}
+  for (const campo of CAMPOS_EDITAVEIS) {
+    if (campo in body) dados[campo] = body[campo] === '' ? null : body[campo]
+  }
+  return dados
+}
+
+produtosRouter.get('/', async (req, res) => {
+  try {
+    const { q, incluirInativos } = req.query as Record<string, string>
+    let sql = 'SELECT * FROM produtos'
+    const params: unknown[] = []
+
+    const filtros: string[] = []
+    if (!incluirInativos) filtros.push('ativo = 1')
+    if (q?.trim()) {
+      filtros.push('(modelo LIKE ? OR descricao LIKE ? OR marca LIKE ? OR categoria LIKE ?)')
+      const like = `%${q.trim()}%`
+      params.push(like, like, like, like)
+    }
+
+    if (filtros.length) sql += ' WHERE ' + filtros.join(' AND ')
+    sql += ' ORDER BY modelo ASC'
+
+    const [rows] = await pool.query(sql, params)
+    res.json({ produtos: rows })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao buscar produtos.' })
+  }
+})
+
+produtosRouter.get('/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM produtos WHERE id = ?', [req.params.id])
+    const produto = (rows as unknown[])[0]
+    if (!produto) return res.status(404).json({ erro: 'Produto não encontrado.' })
+    res.json({ produto })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao buscar produto.' })
+  }
+})
+
+produtosRouter.post('/', async (req, res) => {
+  try {
+    const dados = dadosProduto(req.body)
+    if (!dados.modelo) return res.status(400).json({ erro: 'O campo modelo é obrigatório.' })
+    const [result] = await pool.query('INSERT INTO produtos SET ?', [dados]) as any[]
+    const [rows] = await pool.query('SELECT * FROM produtos WHERE id = ?', [result.insertId])
+    res.status(201).json({ produto: (rows as unknown[])[0] })
+  } catch (err: any) {
+    if (err?.code === 'ER_DUP_ENTRY') return res.status(409).json({ erro: 'Já existe um produto com esse modelo.' })
+    res.status(500).json({ erro: 'Erro ao criar produto.' })
+  }
+})
+
+produtosRouter.put('/:id', async (req, res) => {
+  try {
+    const dados = dadosProduto(req.body)
+    if (Object.keys(dados).length === 0) return res.status(400).json({ erro: 'Nenhum campo para atualizar.' })
+    const [result] = await pool.query('UPDATE produtos SET ? WHERE id = ?', [dados, req.params.id]) as any[]
+    if (result.affectedRows === 0) return res.status(404).json({ erro: 'Produto não encontrado.' })
+    const [rows] = await pool.query('SELECT * FROM produtos WHERE id = ?', [req.params.id])
+    res.json({ produto: (rows as unknown[])[0] })
+  } catch (err: any) {
+    if (err?.code === 'ER_DUP_ENTRY') return res.status(409).json({ erro: 'Já existe um produto com esse modelo.' })
+    res.status(500).json({ erro: 'Erro ao atualizar produto.' })
+  }
+})
+
+produtosRouter.delete('/:id', async (req, res) => {
+  try {
+    const [result] = await pool.query('UPDATE produtos SET ativo = 0 WHERE id = ? AND ativo = 1', [req.params.id]) as any[]
+    if (result.affectedRows === 0) return res.status(404).json({ erro: 'Produto não encontrado ou já inativo.' })
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao inativar produto.' })
+  }
+})
+
+produtosRouter.post('/:id/reativar', async (req, res) => {
+  try {
+    const [result] = await pool.query('UPDATE produtos SET ativo = 1 WHERE id = ? AND ativo = 0', [req.params.id]) as any[]
+    if (result.affectedRows === 0) return res.status(404).json({ erro: 'Produto não encontrado ou já ativo.' })
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao reativar produto.' })
+  }
+})
