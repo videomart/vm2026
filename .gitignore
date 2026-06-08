@@ -1,0 +1,9 @@
+# Segredos / configuração local
+.env
+
+# Dump de banco de dados (dados reais / migrados)
+db/dump/*
+!db/dump/.gitkeep
+
+# Backups locais criados durante depuração
+*.bak
