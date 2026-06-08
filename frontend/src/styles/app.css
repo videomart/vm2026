@@ -274,7 +274,34 @@
   border: 1px solid var(--border);
 }
 
+.badge-sucesso {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.badge-convertida {
+  background: #f0f7ff;
+  color: #1a6bbf;
+}
+
+@media (prefers-color-scheme: dark) {
+  .badge-convertida {
+    background: #0d2a4a;
+    color: #6ab0f5;
+  }
+}
+
 /* Feedback */
+
+.alerta-sucesso {
+  background: var(--sucesso-bg);
+  color: var(--sucesso);
+  border: 1px solid var(--sucesso);
+  border-radius: var(--raio);
+  padding: 10px 16px;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
 
 .alerta-erro {
   background: var(--perigo-bg);

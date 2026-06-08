@@ -63,3 +63,14 @@ authRouter.post('/logout', (_req, res) => {
 authRouter.get('/me', requireAuth, (req, res) => {
   res.json({ usuario: req.usuario })
 })
+
+authRouter.get('/usuarios', requireAuth, async (_req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, nome, email, papel FROM usuarios WHERE ativo = 1 ORDER BY nome ASC',
+    )
+    res.json({ usuarios: rows })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao buscar usuários.' })
+  }
+})

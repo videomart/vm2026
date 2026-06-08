@@ -4,6 +4,7 @@ import { pool } from './db.js'
 import { authRouter } from './routes/auth.js'
 import { clientesRouter } from './routes/clientes.js'
 import { produtosRouter } from './routes/produtos.js'
+import { propostasRouter } from './routes/propostas.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -14,6 +15,7 @@ app.use(cookieParser())
 app.use('/api/auth', authRouter)
 app.use('/api/clientes', clientesRouter)
 app.use('/api/produtos', produtosRouter)
+app.use('/api/propostas', propostasRouter)
 
 app.get('/api/health', async (_req, res) => {
   try {

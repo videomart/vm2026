@@ -6,6 +6,8 @@ import { ListaClientes } from './pages/clientes/ListaClientes'
 import { FormularioCliente } from './pages/clientes/FormularioCliente'
 import { ListaProdutos } from './pages/produtos/ListaProdutos'
 import { FormularioProduto } from './pages/produtos/FormularioProduto'
+import { ListaPropostas } from './pages/propostas/ListaPropostas'
+import { FormularioProposta } from './pages/propostas/FormularioProposta'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -57,6 +59,7 @@ function App() {
         <nav className="cabecalho-menu">
           <Link to="/clientes">Clientes</Link>
           <Link to="/produtos">Produtos</Link>
+          <Link to="/propostas">Propostas</Link>
         </nav>
         <div className="cabecalho-usuario">
           <span>
@@ -77,6 +80,9 @@ function App() {
           <Route path="/produtos" element={<ListaProdutos />} />
           <Route path="/produtos/novo" element={<FormularioProduto />} />
           <Route path="/produtos/:id/editar" element={<FormularioProduto />} />
+          <Route path="/propostas" element={<ListaPropostas />} />
+          <Route path="/propostas/nova" element={<FormularioProposta />} />
+          <Route path="/propostas/:id" element={<FormularioProposta />} />
         </Routes>
       </div>
     </div>
