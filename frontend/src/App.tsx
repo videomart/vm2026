@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Route, Routes } from 'react-router-dom'
+import { NavLink, Route, Routes } from 'react-router-dom'
 import { Login } from './pages/Login'
 import type { Usuario } from './pages/Login'
 import { Dashboard } from './pages/dashboard/Dashboard'
@@ -16,9 +16,12 @@ import { FormularioUsuario } from './pages/usuarios/FormularioUsuario'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
+const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
+
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
   const [usuario, setUsuario] = useState<Usuario | null>(null)
+  const [menuAberto, setMenuAberto] = useState(false)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -59,17 +62,43 @@ function App() {
 
   return (
     <div className="layout-app">
-      <header className="cabecalho">
-        <h1>vm2026</h1>
-        <nav className="cabecalho-menu">
-          <Link to="/">Dashboard</Link>
-          <Link to="/clientes">Clientes</Link>
-          <Link to="/produtos">Produtos</Link>
-          <Link to="/propostas">Propostas</Link>
-          <Link to="/leads">Leads</Link>
-          {usuario.papel === 'admin' && <Link to="/usuarios">Usuários</Link>}
+      <header className="topo-mobile">
+        <button
+          className="botao-menu"
+          type="button"
+          aria-label="Abrir menu"
+          onClick={() => setMenuAberto(true)}
+        >
+          ☰
+        </button>
+        <span className="topo-mobile-titulo">vm2026</span>
+      </header>
+
+      {menuAberto && <div className="overlay-menu" onClick={() => setMenuAberto(false)} />}
+
+      <aside className={`barra-lateral${menuAberto ? ' aberta' : ''}`}>
+        <div className="barra-lateral-topo">
+          <h1>vm2026</h1>
+          <button
+            className="botao-fechar-menu"
+            type="button"
+            aria-label="Fechar menu"
+            onClick={() => setMenuAberto(false)}
+          >
+            ×
+          </button>
+        </div>
+        <nav className="menu-lateral" onClick={() => setMenuAberto(false)}>
+          <NavLink to="/" end className={ITEM_NAV}>Dashboard</NavLink>
+          <NavLink to="/clientes" className={ITEM_NAV}>Clientes</NavLink>
+          <NavLink to="/produtos" className={ITEM_NAV}>Produtos</NavLink>
+          <NavLink to="/propostas" className={ITEM_NAV}>Propostas</NavLink>
+          <NavLink to="/leads" className={ITEM_NAV}>Leads</NavLink>
+          {usuario.papel === 'admin' && (
+            <NavLink to="/usuarios" className={ITEM_NAV}>Usuários</NavLink>
+          )}
         </nav>
-        <div className="cabecalho-usuario">
+        <div className="barra-lateral-rodape">
           <span>
             Olá, <strong>{usuario.nome}</strong> ({usuario.papel})
           </span>
@@ -77,9 +106,9 @@ function App() {
             Sair
           </button>
         </div>
-      </header>
+      </aside>
 
-      <div className="conteudo">
+      <main className="conteudo">
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/clientes" element={<ListaClientes />} />
@@ -98,7 +127,7 @@ function App() {
           <Route path="/usuarios/novo" element={<FormularioUsuario />} />
           <Route path="/usuarios/:id/editar" element={<FormularioUsuario />} />
         </Routes>
-      </div>
+      </main>
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import cookieParser from 'cookie-parser'
+import cors from 'cors'
 import express from 'express'
 import { pool } from './db.js'
 import { authRouter } from './routes/auth.js'
@@ -18,6 +19,8 @@ app.use(cookieParser())
 app.use('/api/auth', authRouter)
 app.use('/api/clientes', clientesRouter)
 app.use('/api/dashboard', dashboardRouter)
+// CORS aberto só para a captura pública de leads pelo site (sem cookies/credenciais).
+app.use('/api/leads/captura', cors())
 app.use('/api/leads', leadsRouter)
 app.use('/api/produtos', produtosRouter)
 app.use('/api/propostas', propostasRouter)

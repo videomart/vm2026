@@ -4,11 +4,9 @@ import { requireAuth } from '../auth/middleware.js'
 
 export const leadsRouter = Router()
 
-leadsRouter.use(requireAuth)
-
 const STATUS_VALIDOS = ['novo', 'em_contato', 'convertido', 'descartado'] as const
 
-const CAMPOS_TEXTO = [
+const CAMPOS_CAPTURA = [
   'nome_empresa',
   'contato',
   'telefone',
@@ -17,8 +15,35 @@ const CAMPOS_TEXTO = [
   'uf',
   'assunto',
   'mensagem',
-  'origem',
 ] as const
+
+// Endpoint público (sem autenticação): formulário do site grava leads aqui.
+leadsRouter.post('/captura', async (req, res) => {
+  const body = req.body ?? {}
+  const dados: Record<string, unknown> = {}
+  for (const campo of CAMPOS_CAPTURA) {
+    const valor = body[campo]
+    dados[campo] = typeof valor === 'string' && valor.trim() !== '' ? valor.trim() : null
+  }
+
+  if (!dados.contato && !dados.nome_empresa) {
+    return res.status(400).json({ erro: 'Informe ao menos o nome do contato ou da empresa.' })
+  }
+  if (!dados.email && !dados.telefone) {
+    return res.status(400).json({ erro: 'Informe ao menos um e-mail ou telefone para contato.' })
+  }
+
+  dados.origem = 'site'
+  dados.status = 'novo'
+  dados.vendedor_id = null
+
+  await pool.query('INSERT INTO leads SET ?', [dados])
+  res.status(201).json({ mensagem: 'Recebido com sucesso.' })
+})
+
+leadsRouter.use(requireAuth)
+
+const CAMPOS_TEXTO = [...CAMPOS_CAPTURA, 'origem'] as const
 
 function dadosLead(body: any) {
   const dados: Record<string, unknown> = {}
