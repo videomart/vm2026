@@ -49,3 +49,10 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return res.status(401).json({ erro: 'Sessão inválida ou expirada.' })
   }
 }
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  if (req.usuario?.papel !== 'admin') {
+    return res.status(403).json({ erro: 'Acesso restrito a administradores.' })
+  }
+  next()
+}

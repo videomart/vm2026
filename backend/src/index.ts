@@ -7,6 +7,7 @@ import { dashboardRouter } from './routes/dashboard.js'
 import { leadsRouter } from './routes/leads.js'
 import { produtosRouter } from './routes/produtos.js'
 import { propostasRouter } from './routes/propostas.js'
+import { usuariosRouter } from './routes/usuarios.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -20,6 +21,7 @@ app.use('/api/dashboard', dashboardRouter)
 app.use('/api/leads', leadsRouter)
 app.use('/api/produtos', produtosRouter)
 app.use('/api/propostas', propostasRouter)
+app.use('/api/usuarios', usuariosRouter)
 
 app.get('/api/health', async (_req, res) => {
   try {

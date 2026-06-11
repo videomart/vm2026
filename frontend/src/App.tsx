@@ -11,6 +11,8 @@ import { ListaPropostas } from './pages/propostas/ListaPropostas'
 import { FormularioProposta } from './pages/propostas/FormularioProposta'
 import { ListaLeads } from './pages/leads/ListaLeads'
 import { FormularioLead } from './pages/leads/FormularioLead'
+import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
+import { FormularioUsuario } from './pages/usuarios/FormularioUsuario'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -65,6 +67,7 @@ function App() {
           <Link to="/produtos">Produtos</Link>
           <Link to="/propostas">Propostas</Link>
           <Link to="/leads">Leads</Link>
+          {usuario.papel === 'admin' && <Link to="/usuarios">Usuários</Link>}
         </nav>
         <div className="cabecalho-usuario">
           <span>
@@ -91,6 +94,9 @@ function App() {
           <Route path="/leads" element={<ListaLeads />} />
           <Route path="/leads/novo" element={<FormularioLead />} />
           <Route path="/leads/:id" element={<FormularioLead />} />
+          <Route path="/usuarios" element={<ListaUsuarios />} />
+          <Route path="/usuarios/novo" element={<FormularioUsuario />} />
+          <Route path="/usuarios/:id/editar" element={<FormularioUsuario />} />
         </Routes>
       </div>
     </div>
