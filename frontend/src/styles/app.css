@@ -327,3 +327,58 @@
   flex-wrap: wrap;
   gap: 12px;
 }
+
+/* Dashboard */
+
+.seletor-periodo {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.seletor-periodo .botao-secundario.ativo {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.grade-cartoes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.cartao {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--raio);
+  padding: 20px;
+}
+
+.cartao h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cartao .valor-destaque {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 8px 0 0;
+}
+
+.cartao .valor-secundario {
+  font-size: 14px;
+  color: var(--text);
+  margin: 4px 0 0;
+}
+
+.cartao .lista-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}

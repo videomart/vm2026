@@ -3,6 +3,7 @@ import express from 'express'
 import { pool } from './db.js'
 import { authRouter } from './routes/auth.js'
 import { clientesRouter } from './routes/clientes.js'
+import { dashboardRouter } from './routes/dashboard.js'
 import { produtosRouter } from './routes/produtos.js'
 import { propostasRouter } from './routes/propostas.js'
 
@@ -14,6 +15,7 @@ app.use(cookieParser())
 
 app.use('/api/auth', authRouter)
 app.use('/api/clientes', clientesRouter)
+app.use('/api/dashboard', dashboardRouter)
 app.use('/api/produtos', produtosRouter)
 app.use('/api/propostas', propostasRouter)
 

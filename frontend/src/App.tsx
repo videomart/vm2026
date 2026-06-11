@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Route, Routes } from 'react-router-dom'
 import { Login } from './pages/Login'
 import type { Usuario } from './pages/Login'
+import { Dashboard } from './pages/dashboard/Dashboard'
 import { ListaClientes } from './pages/clientes/ListaClientes'
 import { FormularioCliente } from './pages/clientes/FormularioCliente'
 import { ListaProdutos } from './pages/produtos/ListaProdutos'
@@ -57,6 +58,7 @@ function App() {
       <header className="cabecalho">
         <h1>vm2026</h1>
         <nav className="cabecalho-menu">
+          <Link to="/">Dashboard</Link>
           <Link to="/clientes">Clientes</Link>
           <Link to="/produtos">Produtos</Link>
           <Link to="/propostas">Propostas</Link>
@@ -73,7 +75,7 @@ function App() {
 
       <div className="conteudo">
         <Routes>
-          <Route path="/" element={<ListaClientes />} />
+          <Route path="/" element={<Dashboard />} />
           <Route path="/clientes" element={<ListaClientes />} />
           <Route path="/clientes/novo" element={<FormularioCliente />} />
           <Route path="/clientes/:id/editar" element={<FormularioCliente />} />
