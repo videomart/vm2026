@@ -9,6 +9,8 @@ import { ListaProdutos } from './pages/produtos/ListaProdutos'
 import { FormularioProduto } from './pages/produtos/FormularioProduto'
 import { ListaPropostas } from './pages/propostas/ListaPropostas'
 import { FormularioProposta } from './pages/propostas/FormularioProposta'
+import { ListaLeads } from './pages/leads/ListaLeads'
+import { FormularioLead } from './pages/leads/FormularioLead'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -62,6 +64,7 @@ function App() {
           <Link to="/clientes">Clientes</Link>
           <Link to="/produtos">Produtos</Link>
           <Link to="/propostas">Propostas</Link>
+          <Link to="/leads">Leads</Link>
         </nav>
         <div className="cabecalho-usuario">
           <span>
@@ -85,6 +88,9 @@ function App() {
           <Route path="/propostas" element={<ListaPropostas />} />
           <Route path="/propostas/nova" element={<FormularioProposta />} />
           <Route path="/propostas/:id" element={<FormularioProposta />} />
+          <Route path="/leads" element={<ListaLeads />} />
+          <Route path="/leads/novo" element={<FormularioLead />} />
+          <Route path="/leads/:id" element={<FormularioLead />} />
         </Routes>
       </div>
     </div>
