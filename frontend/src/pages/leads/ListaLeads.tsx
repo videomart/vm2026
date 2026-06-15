@@ -23,7 +23,7 @@ function formatarData(data: string) {
 export function ListaLeads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
-  const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('')
+  const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('novo')
   const [meusLeads, setMeusLeads] = useState(false)
   const [busca, setBusca] = useState('')
   const [carregando, setCarregando] = useState(true)

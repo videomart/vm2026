@@ -8,7 +8,8 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
-    "import:vm2025": "tsx src/scripts/importar-vm2025.ts"
+    "import:vm2025": "tsx src/scripts/importar-vm2025.ts",
+    "import:leads-vm2025": "tsx src/scripts/importar-leads-vm2025.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
