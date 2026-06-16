@@ -87,7 +87,18 @@ propostasRouter.get('/', async (req, res) => {
 propostasRouter.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT p.*, c.razao_social AS cliente_nome, u.nome AS vendedor_nome
+      `SELECT p.*,
+              c.razao_social AS cliente_nome,
+              c.nome_fantasia AS cliente_fantasia,
+              c.cnpj_cpf AS cliente_cnpj_cpf,
+              c.endereco AS cliente_endereco,
+              c.cidade AS cliente_cidade,
+              c.uf AS cliente_uf,
+              c.cep AS cliente_cep,
+              c.telefone AS cliente_telefone,
+              c.email AS cliente_email,
+              u.nome AS vendedor_nome,
+              u.email AS vendedor_email
        FROM propostas p
        JOIN clientes c ON c.id = p.cliente_id
        JOIN usuarios u ON u.id = p.vendedor_id

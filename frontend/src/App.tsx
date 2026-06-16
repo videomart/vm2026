@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Login } from './pages/Login'
 import type { Usuario } from './pages/Login'
 import { Dashboard } from './pages/dashboard/Dashboard'
@@ -9,6 +9,7 @@ import { ListaProdutos } from './pages/produtos/ListaProdutos'
 import { FormularioProduto } from './pages/produtos/FormularioProduto'
 import { ListaPropostas } from './pages/propostas/ListaPropostas'
 import { FormularioProposta } from './pages/propostas/FormularioProposta'
+import { ImpressaoProposta } from './pages/propostas/ImpressaoProposta'
 import { ListaLeads } from './pages/leads/ListaLeads'
 import { FormularioLead } from './pages/leads/FormularioLead'
 import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
@@ -22,6 +23,7 @@ function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [menuAberto, setMenuAberto] = useState(false)
+  const location = useLocation()
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -58,6 +60,14 @@ function App() {
 
   if (status === 'deslogado' || !usuario) {
     return <Login onLogin={handleLogin} />
+  }
+
+  if (location.pathname.endsWith('/imprimir')) {
+    return (
+      <Routes>
+        <Route path="/propostas/:id/imprimir" element={<ImpressaoProposta />} />
+      </Routes>
+    )
   }
 
   return (

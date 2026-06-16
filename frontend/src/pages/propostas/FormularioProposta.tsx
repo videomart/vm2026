@@ -430,6 +430,15 @@ export function FormularioProposta() {
                 Converter em venda
               </button>
             )}
+            <a
+              className="botao-secundario"
+              href={`/propostas/${proposta.id}/imprimir`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ textDecoration: 'none' }}
+            >
+              🖨 Imprimir
+            </a>
             <button type="button" className="botao-secundario" onClick={() => navigate('/propostas')}>
               Voltar
             </button>
