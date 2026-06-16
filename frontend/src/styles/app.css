@@ -94,6 +94,56 @@
   outline-offset: 2px;
 }
 
+/* ── Submenu de configurações ── */
+.menu-grupo-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: var(--raio);
+  background: none;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  text-align: left;
+}
+
+.menu-grupo-btn:hover {
+  background: var(--bg-elevado);
+  color: var(--text-h);
+}
+
+.menu-grupo-btn.ativo {
+  background: var(--accent-bg);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.menu-grupo-seta {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.menu-subgrupo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border);
+  margin-left: 12px;
+  margin-bottom: 4px;
+}
+
+.menu-subgrupo a {
+  font-size: 13px;
+}
+
 .barra-lateral-rodape {
   display: flex;
   flex-direction: column;

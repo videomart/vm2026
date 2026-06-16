@@ -381,9 +381,9 @@ export function FormularioProposta() {
             <input id="data" type="date" value={data} onChange={(e) => onDataChange(e.target.value)} required disabled={somenteLeitura} />
           </div>
 
-          {/* Linha 3: Condições + Observações — cada uma metade da linha */}
-          <div className="campo campo-largo" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <div className="campo" style={{ marginBottom: 0 }}>
+          {/* Linha 3: Condições + Observações — cada uma metade da linha, alturas iguais */}
+          <div className="campo campo-largo" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px', alignItems: 'stretch' }}>
+            <div className="campo" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column' }}>
               <label htmlFor="condicoes">Condições de pagamento</label>
               {!somenteLeitura && (
                 <select
@@ -407,16 +407,18 @@ export function FormularioProposta() {
                 onChange={(e) => setCondicoes(e.target.value)}
                 disabled={somenteLeitura}
                 placeholder="Selecione um modelo acima ou escreva livremente"
+                style={{ flex: 1, resize: 'vertical' }}
               />
             </div>
-            <div className="campo" style={{ marginBottom: 0 }}>
+            <div className="campo" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column' }}>
               <label htmlFor="observacoes">Observações</label>
               <textarea
                 id="observacoes"
-                rows={somenteLeitura ? 6 : 7}
+                rows={6}
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
                 disabled={somenteLeitura}
+                style={{ flex: 1, resize: 'vertical' }}
               />
             </div>
           </div>

@@ -15,6 +15,7 @@ import { FormularioLead } from './pages/leads/FormularioLead'
 import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
 import { FormularioUsuario } from './pages/usuarios/FormularioUsuario'
 import { Setup } from './pages/setup/Setup'
+import { Condicoes } from './pages/setup/Condicoes'
 import { Marcas } from './pages/setup/Marcas'
 import { Categorias } from './pages/setup/Categorias'
 
@@ -22,11 +23,15 @@ type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
 const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
 
+const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias']
+
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
   const [usuario, setUsuario] = useState<Usuario | null>(null)
   const [menuAberto, setMenuAberto] = useState(false)
   const location = useLocation()
+  const emConfig = ROTAS_CONFIG.some((r) => location.pathname.startsWith(r))
+  const [configAberto, setConfigAberto] = useState(emConfig)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -101,23 +106,32 @@ function App() {
             ×
           </button>
         </div>
-        <nav className="menu-lateral" onClick={() => setMenuAberto(false)}>
-          <NavLink to="/" end className={ITEM_NAV}>Dashboard</NavLink>
-          <NavLink to="/clientes" className={ITEM_NAV}>Clientes</NavLink>
-          <NavLink to="/produtos" className={ITEM_NAV}>Produtos</NavLink>
-          <NavLink to="/propostas" className={ITEM_NAV}>Propostas</NavLink>
-          <NavLink to="/leads" className={ITEM_NAV}>Leads</NavLink>
+        <nav className="menu-lateral">
+          <NavLink to="/" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Dashboard</NavLink>
+          <NavLink to="/clientes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Clientes</NavLink>
+          <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
+          <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
+          <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
           {usuario.papel === 'admin' && (
-            <NavLink to="/usuarios" className={ITEM_NAV}>Usuários</NavLink>
-          )}
-          {usuario.papel === 'admin' && (
-            <NavLink to="/setup" className={ITEM_NAV}>Configurações</NavLink>
-          )}
-          {usuario.papel === 'admin' && (
-            <NavLink to="/marcas" className={ITEM_NAV}>Marcas</NavLink>
-          )}
-          {usuario.papel === 'admin' && (
-            <NavLink to="/categorias" className={ITEM_NAV}>Categorias</NavLink>
+            <>
+              <button
+                className={`menu-grupo-btn${emConfig ? ' ativo' : ''}`}
+                type="button"
+                onClick={() => setConfigAberto((v) => !v)}
+              >
+                <span>Configurações</span>
+                <span className="menu-grupo-seta">{configAberto ? '▾' : '▸'}</span>
+              </button>
+              {configAberto && (
+                <div className="menu-subgrupo">
+                  <NavLink to="/setup" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Empresa / Sistema</NavLink>
+                  <NavLink to="/setup/condicoes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Condições de pagamento</NavLink>
+                  <NavLink to="/usuarios" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Usuários</NavLink>
+                  <NavLink to="/marcas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Marcas</NavLink>
+                  <NavLink to="/categorias" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias</NavLink>
+                </div>
+              )}
+            </>
           )}
         </nav>
         <div className="barra-lateral-rodape">
@@ -150,6 +164,9 @@ function App() {
           <Route path="/usuarios/:id/editar" element={<FormularioUsuario />} />
           {usuario.papel === 'admin' && (
             <Route path="/setup" element={<Setup />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/setup/condicoes" element={<Condicoes />} />
           )}
           {usuario.papel === 'admin' && (
             <Route path="/marcas" element={<Marcas />} />
