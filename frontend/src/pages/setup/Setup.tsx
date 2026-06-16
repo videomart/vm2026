@@ -176,7 +176,7 @@ export function Setup() {
           </div>
           <div className="campo">
             <label>Site</label>
-            <input value={campos.empresa_site} onChange={(e) => atualizar('empresa_site', e.target.value)} placeholder="https://..." />
+            <input className="sem-uppercase" value={campos.empresa_site} onChange={(e) => atualizar('empresa_site', e.target.value)} placeholder="https://..." />
           </div>
         </div>
 

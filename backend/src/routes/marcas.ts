@@ -18,6 +18,15 @@ marcasRouter.get('/', async (_req, res) => {
   }
 })
 
+marcasRouter.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    await pool.query('UPDATE marcas SET ativo = 0 WHERE id = ?', [req.params.id])
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao remover marca.' })
+  }
+})
+
 marcasRouter.post('/', requireAdmin, async (req, res) => {
   try {
     const nome = String(req.body.nome ?? '').trim()

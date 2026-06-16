@@ -15,7 +15,9 @@ import { NavegadorRegistro } from '../../components/NavegadorRegistro'
 import { formatarData } from '../../utils/formatar'
 import type { Cliente } from './types'
 
-type CamposFormulario = Omit<Cliente, 'id' | 'ativo'>
+type Condicao = { id: number; descricao: string }
+
+type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em'>
 
 const CAMPOS_VAZIOS: CamposFormulario = {
   razao_social: '',
@@ -29,6 +31,7 @@ const CAMPOS_VAZIOS: CamposFormulario = {
   uf: '',
   cep: '',
   observacoes: '',
+  condicoes_pagamento: '',
 }
 
 function paraFormulario(cliente: Cliente): CamposFormulario {
@@ -68,10 +71,18 @@ export function FormularioCliente() {
 
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
   const [criadoEm, setCriadoEm] = useState<string | null>(null)
+  const [listaCondicoes, setListaCondicoes] = useState<string[]>([])
   const [errosCampo, setErrosCampo] = useState<Erros>({})
   const [carregando, setCarregando] = useState(editando)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/setup/condicoes', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setListaCondicoes((d.condicoes ?? []).map((c: Condicao) => c.descricao)))
+      .catch(() => null)
+  }, [])
 
   useEffect(() => {
     if (!editando) return
@@ -272,6 +283,20 @@ export function FormularioCliente() {
               value={campos.observacoes ?? ''}
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
             />
+          </div>
+
+          <div className="campo campo-largo">
+            <label htmlFor="condicoes_pagamento">Condições de pagamento padrão</label>
+            <input
+              id="condicoes_pagamento"
+              list="lista-condicoes-cli"
+              value={campos.condicoes_pagamento ?? ''}
+              onChange={(e) => atualizarCampo('condicoes_pagamento', e.target.value)}
+              autoComplete="off"
+            />
+            <datalist id="lista-condicoes-cli">
+              {listaCondicoes.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </div>
         </div>
 

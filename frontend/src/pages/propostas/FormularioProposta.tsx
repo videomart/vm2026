@@ -47,6 +47,7 @@ export function FormularioProposta() {
   const [usuarios, setUsuarios] = useState<UsuarioSimples[]>([])
   const [usuarioAtual, setUsuarioAtual] = useState<UsuarioSimples | null>(null)
   const [listaCondicoes, setListaCondicoes] = useState<string[]>([])
+  const [validadeDias, setValidadeDias] = useState(30)
 
   // proposta carregada (para edição / visualização)
   const [proposta, setProposta] = useState<Proposta | null>(null)
@@ -85,17 +86,20 @@ export function FormularioProposta() {
   useEffect(() => {
     async function init() {
       try {
-        const [resMe, resClientes, resProdutos, resUsuarios, resCondicoes] = await Promise.all([
+        const [resMe, resClientes, resProdutos, resUsuarios, resCondicoes, resSetup] = await Promise.all([
           fetch('/api/auth/me', { credentials: 'include' }),
           fetch('/api/clientes', { credentials: 'include' }),
           fetch('/api/produtos', { credentials: 'include' }),
           fetch('/api/auth/usuarios', { credentials: 'include' }),
           fetch('/api/setup/condicoes', { credentials: 'include' }),
+          fetch('/api/setup', { credentials: 'include' }),
         ])
-        const [me, clientesData, produtosData, usuariosData, condicoesData] = await Promise.all([
-          resMe.json(), resClientes.json(), resProdutos.json(), resUsuarios.json(), resCondicoes.json(),
+        const [me, clientesData, produtosData, usuariosData, condicoesData, setupData] = await Promise.all([
+          resMe.json(), resClientes.json(), resProdutos.json(), resUsuarios.json(), resCondicoes.json(), resSetup.json(),
         ])
 
+        const dias = Number(setupData?.setup?.proposta_validade_dias ?? 30)
+        setValidadeDias(dias)
         setUsuarioAtual(me.usuario)
         setClientes(clientesData.clientes ?? [])
         setProdutos(produtosData.produtos ?? [])
@@ -104,6 +108,13 @@ export function FormularioProposta() {
 
         if (me.usuario) {
           setVendedorId(String(me.usuario.id))
+        }
+
+        // validade padrão para nova proposta
+        if (!editando && dias > 0) {
+          const v = new Date()
+          v.setDate(v.getDate() + dias)
+          setValidade(v.toISOString().slice(0, 10))
         }
 
         if (editando && id) {
@@ -167,6 +178,27 @@ export function FormularioProposta() {
 
   function removerItem(idx: number) {
     setItens((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function validadeParaData(dataStr: string, dias: number): string {
+    const d = new Date(dataStr + 'T12:00:00')
+    d.setDate(d.getDate() + dias)
+    return d.toISOString().slice(0, 10)
+  }
+
+  function onDataChange(novaData: string) {
+    setData(novaData)
+    if (!editando && validadeDias > 0) {
+      setValidade(validadeParaData(novaData, validadeDias))
+    }
+  }
+
+  function onClienteChange(novoClienteId: string) {
+    setClienteId(novoClienteId)
+    const cliente = clientes.find((c) => String(c.id) === novoClienteId)
+    if (cliente?.condicoes_pagamento) {
+      setCondicoes(cliente.condicoes_pagamento)
+    }
   }
 
   // ---- submit ----
@@ -276,14 +308,14 @@ export function FormularioProposta() {
         {/* cabeçalho */}
         <div className="grade-formulario">
 
-          {/* Cliente + botão novo cliente */}
+          {/* Linha 1: Cliente (span 2) + Vendedor */}
           <div className="campo" style={{ gridColumn: 'span 2' }}>
             <label htmlFor="cliente_id">Cliente *</label>
             <div style={{ display: 'flex', gap: '6px' }}>
               <select
                 id="cliente_id"
                 value={clienteId}
-                onChange={(e) => setClienteId(e.target.value)}
+                onChange={(e) => onClienteChange(e.target.value)}
                 required
                 disabled={somenteLeitura}
                 style={{ flex: 1 }}
@@ -304,7 +336,6 @@ export function FormularioProposta() {
               )}
             </div>
           </div>
-
           <div className="campo">
             <label htmlFor="vendedor_id">Vendedor *</label>
             <select
@@ -320,24 +351,29 @@ export function FormularioProposta() {
               ))}
             </select>
           </div>
-          <div className="campo">
+
+          {/* Linha 2: Data + label validade calculada */}
+          <div className="campo" style={{ maxWidth: '160px' }}>
             <label htmlFor="data">Data *</label>
-            <input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} required disabled={somenteLeitura} />
+            <input id="data" type="date" value={data} onChange={(e) => onDataChange(e.target.value)} required disabled={somenteLeitura} />
           </div>
-          <div className="campo">
-            <label htmlFor="validade">Validade</label>
-            <input id="validade" type="date" value={validade} onChange={(e) => setValidade(e.target.value)} disabled={somenteLeitura} />
+          <div className="campo" style={{ justifyContent: 'flex-end', paddingBottom: '6px' }}>
+            <label style={{ fontSize: '12px', color: 'var(--text)' }}>Válida até</label>
+            <span style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '14px' }}>
+              {validade ? validade.split('-').reverse().join('/') : '—'}
+            </span>
           </div>
 
-          {/* Condições e Observações na mesma linha */}
+          {/* Linha 3: Condições (textarea) + Observações (textarea) */}
           <div className="campo">
             <label htmlFor="condicoes">Condições de pagamento</label>
-            <input
+            <textarea
               id="condicoes"
-              list="lista-condicoes"
+              rows={3}
               value={condicoes}
               onChange={(e) => setCondicoes(e.target.value)}
               disabled={somenteLeitura}
+              list="lista-condicoes"
               autoComplete="off"
             />
             <datalist id="lista-condicoes">
@@ -346,7 +382,7 @@ export function FormularioProposta() {
           </div>
           <div className="campo">
             <label htmlFor="observacoes">Observações</label>
-            <textarea id="observacoes" rows={1} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={somenteLeitura} />
+            <textarea id="observacoes" rows={3} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={somenteLeitura} />
           </div>
         </div>
 

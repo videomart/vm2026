@@ -366,6 +366,17 @@
 .campo textarea,
 .campo select {
   width: 100%;
+  text-transform: uppercase;
+}
+
+/* Campos que devem permanecer em minúsculas */
+.campo input[type="email"],
+.campo input[type="number"],
+.campo input[type="date"],
+.campo input[type="password"],
+.campo input.sem-uppercase,
+.campo textarea.sem-uppercase {
+  text-transform: none;
 }
 
 .campo-invalido input,

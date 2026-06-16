@@ -18,6 +18,7 @@ const CAMPOS_EDITAVEIS = [
   'uf',
   'cep',
   'observacoes',
+  'condicoes_pagamento',
 ] as const
 
 function dadosCliente(body: any) {
@@ -50,7 +51,7 @@ clientesRouter.get('/', async (req, res) => {
   const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
   const [rows] = await pool.query(
     `SELECT id, razao_social, nome_fantasia, cnpj_cpf, email, telefone, whatsapp,
-            endereco, cidade, uf, cep, observacoes, ativo, criado_em, atualizado_em
+            endereco, cidade, uf, cep, observacoes, condicoes_pagamento, ativo, criado_em, atualizado_em
        FROM clientes
        ${where}
        ORDER BY razao_social`,

@@ -15,6 +15,8 @@ import { FormularioLead } from './pages/leads/FormularioLead'
 import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
 import { FormularioUsuario } from './pages/usuarios/FormularioUsuario'
 import { Setup } from './pages/setup/Setup'
+import { Marcas } from './pages/setup/Marcas'
+import { Categorias } from './pages/setup/Categorias'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -111,6 +113,12 @@ function App() {
           {usuario.papel === 'admin' && (
             <NavLink to="/setup" className={ITEM_NAV}>Configurações</NavLink>
           )}
+          {usuario.papel === 'admin' && (
+            <NavLink to="/marcas" className={ITEM_NAV}>Marcas</NavLink>
+          )}
+          {usuario.papel === 'admin' && (
+            <NavLink to="/categorias" className={ITEM_NAV}>Categorias</NavLink>
+          )}
         </nav>
         <div className="barra-lateral-rodape">
           <span>
@@ -142,6 +150,12 @@ function App() {
           <Route path="/usuarios/:id/editar" element={<FormularioUsuario />} />
           {usuario.papel === 'admin' && (
             <Route path="/setup" element={<Setup />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/marcas" element={<Marcas />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/categorias" element={<Categorias />} />
           )}
         </Routes>
       </main>
