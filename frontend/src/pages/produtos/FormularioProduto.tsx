@@ -185,7 +185,7 @@ export function FormularioProduto() {
     }
   }
 
-  const nav = useNavegacaoRegistro('nav_produtos', id, '/produtos')
+  const nav = useNavegacaoRegistro('nav_produtos', id, '/produtos', '/editar')
 
   if (carregando) return <p>Carregando...</p>
 

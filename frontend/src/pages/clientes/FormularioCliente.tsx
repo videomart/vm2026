@@ -134,7 +134,7 @@ export function FormularioCliente() {
     }
   }
 
-  const nav = useNavegacaoRegistro('nav_clientes', id, '/clientes')
+  const nav = useNavegacaoRegistro('nav_clientes', id, '/clientes', '/editar')
 
   if (carregando) return <p>Carregando...</p>
 

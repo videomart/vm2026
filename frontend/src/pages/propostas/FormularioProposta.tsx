@@ -18,6 +18,16 @@ const ITEM_VAZIO: ItemFormulario = {
   desconto: '0',
 }
 
+function stripHtml(texto: string | null | undefined): string {
+  if (!texto) return ''
+  return texto
+    .replace(/<[^>]+>/g, ' ')       // remove tags HTML
+    .replace(/&[a-z]+;/gi, ' ')     // remove entidades HTML (&nbsp; etc.)
+    .replace(/&#\d+;/g, ' ')        // remove entidades numéricas
+    .replace(/\s{2,}/g, ' ')        // colapsa múltiplos espaços
+    .trim()
+}
+
 function calcSubtotal(item: ItemFormulario): number {
   const qtd = Number(item.quantidade) || 0
   const unit = Number(item.valor_unitario) || 0
@@ -126,8 +136,8 @@ export function FormularioProposta() {
           setVendedorId(String(p.vendedor_id))
           setData(dataParaInput(p.data))
           setValidade(dataParaInput(p.validade))
-          setCondicoes(p.condicoes_pagamento ?? '')
-          setObservacoes(p.observacoes ?? '')
+          setCondicoes(stripHtml(p.condicoes_pagamento))
+          setObservacoes(stripHtml(p.observacoes))
           setDesconto(String(p.desconto ?? '0'))
           if (p.itens?.length) {
             setItens(p.itens.map((item: any) => ({
@@ -352,37 +362,55 @@ export function FormularioProposta() {
             </select>
           </div>
 
-          {/* Linha 2: Data + label validade calculada */}
-          <div className="campo" style={{ maxWidth: '160px' }}>
-            <label htmlFor="data">Data *</label>
+          {/* Linha 2: Data com validade no label + espaço */}
+          <div className="campo">
+            <label htmlFor="data">
+              Data *
+              {validade && (
+                <span style={{ fontWeight: 400, fontSize: '12px', color: 'var(--text)', marginLeft: '8px' }}>
+                  válida até {validade.split('-').reverse().join('/')}
+                </span>
+              )}
+            </label>
             <input id="data" type="date" value={data} onChange={(e) => onDataChange(e.target.value)} required disabled={somenteLeitura} />
           </div>
-          <div className="campo" style={{ justifyContent: 'flex-end', paddingBottom: '6px' }}>
-            <label style={{ fontSize: '12px', color: 'var(--text)' }}>Válida até</label>
-            <span style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '14px' }}>
-              {validade ? validade.split('-').reverse().join('/') : '—'}
-            </span>
-          </div>
 
-          {/* Linha 3: Condições (textarea) + Observações (textarea) */}
-          <div className="campo">
-            <label htmlFor="condicoes">Condições de pagamento</label>
-            <textarea
-              id="condicoes"
-              rows={3}
-              value={condicoes}
-              onChange={(e) => setCondicoes(e.target.value)}
-              disabled={somenteLeitura}
-              list="lista-condicoes"
-              autoComplete="off"
-            />
-            <datalist id="lista-condicoes">
-              {listaCondicoes.map((c) => <option key={c} value={c} />)}
-            </datalist>
-          </div>
-          <div className="campo">
-            <label htmlFor="observacoes">Observações</label>
-            <textarea id="observacoes" rows={3} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={somenteLeitura} />
+          {/* Linha 3: Condições + Observações — cada uma metade da linha */}
+          <div className="campo campo-largo" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div className="campo" style={{ marginBottom: 0 }}>
+              <label htmlFor="condicoes">Condições de pagamento</label>
+              <select
+                id="condicoes-select"
+                value={listaCondicoes.includes(condicoes) ? condicoes : '__outro__'}
+                onChange={(e) => {
+                  if (e.target.value !== '__outro__') setCondicoes(e.target.value)
+                }}
+                disabled={somenteLeitura}
+                style={{ marginBottom: '4px' }}
+              >
+                <option value="">— Selecione —</option>
+                {listaCondicoes.map((c) => <option key={c} value={c}>{c}</option>)}
+                <option value="__outro__">Outro / texto livre</option>
+              </select>
+              <textarea
+                id="condicoes"
+                rows={4}
+                value={condicoes}
+                onChange={(e) => setCondicoes(e.target.value)}
+                disabled={somenteLeitura}
+                placeholder="Texto livre ou edite a seleção acima"
+              />
+            </div>
+            <div className="campo" style={{ marginBottom: 0 }}>
+              <label htmlFor="observacoes">Observações</label>
+              <textarea
+                id="observacoes"
+                rows={6}
+                value={observacoes}
+                onChange={(e) => setObservacoes(e.target.value)}
+                disabled={somenteLeitura}
+              />
+            </div>
           </div>
         </div>
 

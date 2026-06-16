@@ -9,7 +9,12 @@ import { useNavigate } from 'react-router-dom'
  * @param idAtual  O id do registro sendo visualizado (string ou number)
  * @param basePath  Ex: "/propostas"
  */
-export function useNavegacaoRegistro(chave: string, idAtual: string | number | undefined, basePath: string) {
+export function useNavegacaoRegistro(
+  chave: string,
+  idAtual: string | number | undefined,
+  basePath: string,
+  sufixo = '',
+) {
   const navigate = useNavigate()
 
   const ids: number[] = useMemo(() => {
@@ -28,11 +33,11 @@ export function useNavegacaoRegistro(chave: string, idAtual: string | number | u
   const posicao = idxAtual >= 0 ? idxAtual + 1 : null
 
   function irAnterior() {
-    if (temAnterior) navigate(`${basePath}/${ids[idxAtual - 1]}`)
+    if (temAnterior) navigate(`${basePath}/${ids[idxAtual - 1]}${sufixo}`)
   }
 
   function irProximo() {
-    if (temProximo) navigate(`${basePath}/${ids[idxAtual + 1]}`)
+    if (temProximo) navigate(`${basePath}/${ids[idxAtual + 1]}${sufixo}`)
   }
 
   return { temAnterior, temProximo, irAnterior, irProximo, total, posicao }
