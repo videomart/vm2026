@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useOrdenacao } from '../../hooks/useOrdenacao'
 import type { Lead, StatusLead } from './types'
 
 const LABELS_STATUS: Record<StatusLead, string> = {
@@ -29,6 +30,8 @@ export function ListaLeads() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
+  const { ordenados, props: th } = useOrdenacao(leads, 'criado_em')
+
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
@@ -43,7 +46,6 @@ export function ListaLeads() {
     if (filtroStatus) params.set('status', filtroStatus)
     if (busca.trim()) params.set('q', busca.trim())
     if (meusLeads && usuarioId) params.set('vendedorId', String(usuarioId))
-
     fetch(`/api/leads?${params}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((d) => setLeads(d.leads))
@@ -62,9 +64,7 @@ export function ListaLeads() {
     <section>
       <div className="cabecalho-secao">
         <h2>Leads</h2>
-        <Link className="botao" to="/leads/novo">
-          + Novo lead
-        </Link>
+        <Link className="botao" to="/leads/novo">+ Novo lead</Link>
       </div>
 
       <form className="barra-busca" onSubmit={(e) => { e.preventDefault(); carregar() }}>
@@ -101,18 +101,18 @@ export function ListaLeads() {
           <table className="tabela">
             <thead>
               <tr>
-                <th>Empresa / Contato</th>
+                <th {...th('nome_empresa')}>Empresa / Contato</th>
                 <th>Telefone / E-mail</th>
-                <th>Cidade/UF</th>
-                <th>Origem</th>
-                <th>Vendedor</th>
-                <th>Status</th>
-                <th>Recebido em</th>
+                <th {...th('cidade')}>Cidade/UF</th>
+                <th {...th('origem')}>Origem</th>
+                <th {...th('vendedor_nome')}>Vendedor</th>
+                <th {...th('status')}>Status</th>
+                <th {...th('criado_em')}>Recebido em</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {leads.map((l) => (
+              {ordenados.map((l) => (
                 <tr key={l.id}>
                   <td>
                     {l.nome_empresa ?? '—'}
@@ -134,9 +134,7 @@ export function ListaLeads() {
                     <div className="acoes">
                       <Link className="botao-link" to={`/leads/${l.id}`}>Ver</Link>
                       {!l.vendedor_id && (
-                        <button className="botao-secundario" type="button" onClick={() => assumir(l)}>
-                          Assumir
-                        </button>
+                        <button className="botao-secundario" type="button" onClick={() => assumir(l)}>Assumir</button>
                       )}
                     </div>
                   </td>

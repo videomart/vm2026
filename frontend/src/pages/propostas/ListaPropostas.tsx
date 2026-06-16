@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useOrdenacao } from '../../hooks/useOrdenacao'
 import type { Proposta, StatusProposta } from './types'
 
 const LABELS_STATUS: Record<StatusProposta, string> = {
@@ -31,13 +32,14 @@ export function ListaPropostas() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
+  const { ordenados, props: th } = useOrdenacao(propostas, 'data')
+
   function carregar() {
     setCarregando(true)
     setErro(null)
     const params = new URLSearchParams()
     if (filtroStatus) params.set('status', filtroStatus)
     if (busca.trim()) params.set('q', busca.trim())
-
     fetch(`/api/propostas?${params}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((d) => setPropostas(d.propostas))
@@ -51,9 +53,7 @@ export function ListaPropostas() {
     <section>
       <div className="cabecalho-secao">
         <h2>Propostas</h2>
-        <Link className="botao" to="/propostas/nova">
-          + Nova proposta
-        </Link>
+        <Link className="botao" to="/propostas/nova">+ Nova proposta</Link>
       </div>
 
       <form className="barra-busca" onSubmit={(e) => { e.preventDefault(); carregar() }}>
@@ -86,18 +86,18 @@ export function ListaPropostas() {
           <table className="tabela">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Cliente</th>
-                <th>Vendedor</th>
-                <th>Data</th>
-                <th>Validade</th>
-                <th>Total</th>
-                <th>Status</th>
+                <th {...th('id')}>#</th>
+                <th {...th('cliente_nome')}>Cliente</th>
+                <th {...th('vendedor_nome')}>Vendedor</th>
+                <th {...th('data')}>Data</th>
+                <th {...th('validade')}>Validade</th>
+                <th {...th('total')}>Total</th>
+                <th {...th('status')}>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {propostas.map((p) => (
+              {ordenados.map((p) => (
                 <tr key={p.id}>
                   <td>{p.id}</td>
                   <td>{p.cliente_nome}</td>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useOrdenacao } from '../../hooks/useOrdenacao'
 import type { Cliente } from './types'
 
 export function ListaClientes() {
@@ -8,6 +9,8 @@ export function ListaClientes() {
   const [mostrarInativos, setMostrarInativos] = useState(false)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+
+  const { ordenados, props: th } = useOrdenacao(clientes, 'razao_social')
 
   function carregar() {
     setCarregando(true)
@@ -36,19 +39,12 @@ export function ListaClientes() {
 
   async function inativar(cliente: Cliente) {
     if (!confirm(`Inativar o cliente "${cliente.razao_social}"?`)) return
-
-    const res = await fetch(`/api/clientes/${cliente.id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    })
+    const res = await fetch(`/api/clientes/${cliente.id}`, { method: 'DELETE', credentials: 'include' })
     if (res.ok) carregar()
   }
 
   async function reativar(cliente: Cliente) {
-    const res = await fetch(`/api/clientes/${cliente.id}/reativar`, {
-      method: 'POST',
-      credentials: 'include',
-    })
+    const res = await fetch(`/api/clientes/${cliente.id}/reativar`, { method: 'POST', credentials: 'include' })
     if (res.ok) carregar()
   }
 
@@ -56,9 +52,7 @@ export function ListaClientes() {
     <section>
       <div className="cabecalho-secao">
         <h2>Clientes</h2>
-        <Link className="botao" to="/clientes/novo">
-          + Novo cliente
-        </Link>
+        <Link className="botao" to="/clientes/novo">+ Novo cliente</Link>
       </div>
 
       <form className="barra-busca" onSubmit={handleBusca}>
@@ -68,46 +62,32 @@ export function ListaClientes() {
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
-        <button className="botao-secundario" type="submit">
-          Buscar
-        </button>
+        <button className="botao-secundario" type="submit">Buscar</button>
         <label className="opcao-checkbox">
-          <input
-            type="checkbox"
-            checked={mostrarInativos}
-            onChange={(e) => setMostrarInativos(e.target.checked)}
-          />
+          <input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />
           Mostrar inativos
         </label>
       </form>
 
-      {erro && (
-        <p className="alerta-erro" role="alert">
-          {erro}
-        </p>
-      )}
+      {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
       <div className="tabela-wrapper">
         {carregando && <p className="estado-vazio">Carregando...</p>}
-
-        {!carregando && clientes.length === 0 && (
-          <p className="estado-vazio">Nenhum cliente encontrado.</p>
-        )}
-
+        {!carregando && clientes.length === 0 && <p className="estado-vazio">Nenhum cliente encontrado.</p>}
         {!carregando && clientes.length > 0 && (
           <table className="tabela">
             <thead>
               <tr>
-                <th>Razão social</th>
-                <th>Nome fantasia</th>
-                <th>CNPJ/CPF</th>
-                <th>Cidade/UF</th>
-                <th>Status</th>
+                <th {...th('razao_social')}>Razão social</th>
+                <th {...th('nome_fantasia')}>Nome fantasia</th>
+                <th {...th('cnpj_cpf')}>CNPJ/CPF</th>
+                <th {...th('cidade')}>Cidade/UF</th>
+                <th {...th('ativo')}>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
-              {clientes.map((cliente) => (
+              {ordenados.map((cliente) => (
                 <tr key={cliente.id}>
                   <td>{cliente.razao_social}</td>
                   <td>{cliente.nome_fantasia ?? '—'}</td>
@@ -117,34 +97,16 @@ export function ListaClientes() {
                     {cliente.uf ? `/${cliente.uf}` : ''}
                   </td>
                   <td>
-                    {cliente.ativo ? (
-                      <span className="badge badge-ativo">Ativo</span>
-                    ) : (
-                      <span className="badge badge-inativo">Inativo</span>
-                    )}
+                    {cliente.ativo
+                      ? <span className="badge badge-ativo">Ativo</span>
+                      : <span className="badge badge-inativo">Inativo</span>}
                   </td>
                   <td>
                     <div className="acoes">
-                      <Link className="botao-link" to={`/clientes/${cliente.id}/editar`}>
-                        Editar
-                      </Link>
-                      {cliente.ativo ? (
-                        <button
-                          className="botao-perigo"
-                          type="button"
-                          onClick={() => inativar(cliente)}
-                        >
-                          Inativar
-                        </button>
-                      ) : (
-                        <button
-                          className="botao-secundario"
-                          type="button"
-                          onClick={() => reativar(cliente)}
-                        >
-                          Reativar
-                        </button>
-                      )}
+                      <Link className="botao-link" to={`/clientes/${cliente.id}/editar`}>Editar</Link>
+                      {cliente.ativo
+                        ? <button className="botao-perigo" type="button" onClick={() => inativar(cliente)}>Inativar</button>
+                        : <button className="botao-secundario" type="button" onClick={() => reativar(cliente)}>Reativar</button>}
                     </div>
                   </td>
                 </tr>

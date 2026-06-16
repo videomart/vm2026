@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  mascaraCNPJouCPF,
+  mascaraTelefone,
+  mascaraCEP,
+  validarCNPJouCPF,
+  validarTelefone,
+  validarEmail,
+  validarCEP,
+} from '../../utils/validacoes'
 import type { Cliente } from './types'
 
 type CamposFormulario = Omit<Cliente, 'id' | 'ativo'>
@@ -27,19 +36,41 @@ function paraFormulario(cliente: Cliente): CamposFormulario {
   return campos
 }
 
+type Erros = Partial<Record<keyof CamposFormulario, string>>
+
+function validarCampos(campos: CamposFormulario): Erros {
+  const erros: Erros = {}
+  if (campos.cnpj_cpf && !validarCNPJouCPF(campos.cnpj_cpf)) {
+    erros.cnpj_cpf = 'CNPJ ou CPF inválido.'
+  }
+  if (campos.email && !validarEmail(campos.email)) {
+    erros.email = 'E-mail inválido.'
+  }
+  if (campos.telefone && !validarTelefone(campos.telefone)) {
+    erros.telefone = 'Telefone inválido. Use (DDD) + número.'
+  }
+  if (campos.whatsapp && !validarTelefone(campos.whatsapp)) {
+    erros.whatsapp = 'WhatsApp inválido. Use (DDD) + número.'
+  }
+  if (campos.cep && !validarCEP(campos.cep)) {
+    erros.cep = 'CEP inválido. Use 8 dígitos.'
+  }
+  return erros
+}
+
 export function FormularioCliente() {
   const { id } = useParams()
   const navigate = useNavigate()
   const editando = Boolean(id)
 
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
+  const [errosCampo, setErrosCampo] = useState<Erros>({})
   const [carregando, setCarregando] = useState(editando)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     if (!editando) return
-
     fetch(`/api/clientes/${id}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => setCampos(paraFormulario(data.cliente)))
@@ -48,14 +79,26 @@ export function FormularioCliente() {
   }, [id, editando])
 
   function atualizarCampo(campo: keyof CamposFormulario, valor: string) {
+    // Limpa erro do campo ao editar
+    if (errosCampo[campo]) setErrosCampo((e) => ({ ...e, [campo]: undefined }))
     setCampos((atual) => ({ ...atual, [campo]: valor }))
+  }
+
+  function validarCampo(campo: keyof CamposFormulario) {
+    const novos = validarCampos(campos)
+    setErrosCampo((e) => ({ ...e, [campo]: novos[campo] }))
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    const erros = validarCampos(campos)
+    if (Object.keys(erros).length > 0) {
+      setErrosCampo(erros)
+      setErro('Corrija os campos destacados antes de salvar.')
+      return
+    }
     setErro(null)
     setSalvando(true)
-
     try {
       const res = await fetch(editando ? `/api/clientes/${id}` : '/api/clientes', {
         method: editando ? 'PUT' : 'POST',
@@ -64,12 +107,7 @@ export function FormularioCliente() {
         body: JSON.stringify(campos),
       })
       const data = await res.json()
-
-      if (!res.ok) {
-        setErro(data.erro ?? 'Não foi possível salvar o cliente.')
-        return
-      }
-
+      if (!res.ok) { setErro(data.erro ?? 'Não foi possível salvar o cliente.'); return }
       navigate('/clientes')
     } catch {
       setErro('Erro de conexão com o servidor.')
@@ -78,15 +116,16 @@ export function FormularioCliente() {
     }
   }
 
-  if (carregando) {
-    return <p>Carregando...</p>
-  }
+  if (carregando) return <p>Carregando...</p>
+
+  const ec = errosCampo
 
   return (
     <section>
       <h2>{editando ? 'Editar cliente' : 'Novo cliente'}</h2>
       <form onSubmit={handleSubmit}>
         <div className="grade-formulario">
+
           <div className="campo campo-largo">
             <label htmlFor="razao_social">Razão social *</label>
             <input
@@ -96,6 +135,7 @@ export function FormularioCliente() {
               required
             />
           </div>
+
           <div className="campo">
             <label htmlFor="nome_fantasia">Nome fantasia</label>
             <input
@@ -104,39 +144,59 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('nome_fantasia', e.target.value)}
             />
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.cnpj_cpf ? ' campo-invalido' : ''}`}>
             <label htmlFor="cnpj_cpf">CNPJ/CPF</label>
             <input
               id="cnpj_cpf"
               value={campos.cnpj_cpf ?? ''}
-              onChange={(e) => atualizarCampo('cnpj_cpf', e.target.value)}
+              onChange={(e) => atualizarCampo('cnpj_cpf', mascaraCNPJouCPF(e.target.value))}
+              onBlur={() => validarCampo('cnpj_cpf')}
+              placeholder="00.000.000/0000-00"
+              maxLength={18}
             />
+            {ec.cnpj_cpf && <span className="campo-erro">{ec.cnpj_cpf}</span>}
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.email ? ' campo-invalido' : ''}`}>
             <label htmlFor="email">E-mail</label>
             <input
               id="email"
-              type="email"
+              type="text"
               value={campos.email ?? ''}
               onChange={(e) => atualizarCampo('email', e.target.value)}
+              onBlur={() => validarCampo('email')}
+              placeholder="contato@empresa.com.br"
             />
+            {ec.email && <span className="campo-erro">{ec.email}</span>}
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.telefone ? ' campo-invalido' : ''}`}>
             <label htmlFor="telefone">Telefone</label>
             <input
               id="telefone"
               value={campos.telefone ?? ''}
-              onChange={(e) => atualizarCampo('telefone', e.target.value)}
+              onChange={(e) => atualizarCampo('telefone', mascaraTelefone(e.target.value))}
+              onBlur={() => validarCampo('telefone')}
+              placeholder="(11) 99999-9999"
+              maxLength={15}
             />
+            {ec.telefone && <span className="campo-erro">{ec.telefone}</span>}
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.whatsapp ? ' campo-invalido' : ''}`}>
             <label htmlFor="whatsapp">WhatsApp</label>
             <input
               id="whatsapp"
               value={campos.whatsapp ?? ''}
-              onChange={(e) => atualizarCampo('whatsapp', e.target.value)}
+              onChange={(e) => atualizarCampo('whatsapp', mascaraTelefone(e.target.value))}
+              onBlur={() => validarCampo('whatsapp')}
+              placeholder="(11) 99999-9999"
+              maxLength={15}
             />
+            {ec.whatsapp && <span className="campo-erro">{ec.whatsapp}</span>}
           </div>
+
           <div className="campo campo-largo">
             <label htmlFor="endereco">Endereço</label>
             <input
@@ -145,6 +205,7 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('endereco', e.target.value)}
             />
           </div>
+
           <div className="campo">
             <label htmlFor="cidade">Cidade</label>
             <input
@@ -153,6 +214,7 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('cidade', e.target.value)}
             />
           </div>
+
           <div className="campo">
             <label htmlFor="uf">UF</label>
             <input
@@ -162,14 +224,20 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
             />
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.cep ? ' campo-invalido' : ''}`}>
             <label htmlFor="cep">CEP</label>
             <input
               id="cep"
               value={campos.cep ?? ''}
-              onChange={(e) => atualizarCampo('cep', e.target.value)}
+              onChange={(e) => atualizarCampo('cep', mascaraCEP(e.target.value))}
+              onBlur={() => validarCampo('cep')}
+              placeholder="00000-000"
+              maxLength={9}
             />
+            {ec.cep && <span className="campo-erro">{ec.cep}</span>}
           </div>
+
           <div className="campo campo-largo">
             <label htmlFor="observacoes">Observações</label>
             <textarea
@@ -180,11 +248,7 @@ export function FormularioCliente() {
           </div>
         </div>
 
-        {erro && (
-          <p className="alerta-erro" role="alert">
-            {erro}
-          </p>
-        )}
+        {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
         <div className="barra-acoes-formulario">
           <button className="botao" type="submit" disabled={salvando}>

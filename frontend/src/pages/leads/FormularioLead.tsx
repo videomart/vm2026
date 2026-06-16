@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import {
+  mascaraTelefone,
+  validarTelefone,
+  validarEmail,
+} from '../../utils/validacoes'
 import type { Lead, StatusLead } from './types'
 
 type UsuarioSimples = { id: number; nome: string }
@@ -56,6 +61,19 @@ function paraFormulario(lead: Lead): CamposFormulario {
   }
 }
 
+type Erros = Partial<Record<keyof CamposFormulario, string>>
+
+function validarCampos(campos: CamposFormulario): Erros {
+  const erros: Erros = {}
+  if (campos.telefone && !validarTelefone(campos.telefone)) {
+    erros.telefone = 'Telefone inválido. Use (DDD) + número.'
+  }
+  if (campos.email && !validarEmail(campos.email)) {
+    erros.email = 'E-mail inválido.'
+  }
+  return erros
+}
+
 export function FormularioLead() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -64,6 +82,7 @@ export function FormularioLead() {
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
   const [lead, setLead] = useState<Lead | null>(null)
   const [usuarios, setUsuarios] = useState<UsuarioSimples[]>([])
+  const [errosCampo, setErrosCampo] = useState<Erros>({})
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
@@ -74,7 +93,6 @@ export function FormularioLead() {
         const resUsuarios = await fetch('/api/auth/usuarios', { credentials: 'include' })
         const usuariosData = await resUsuarios.json()
         setUsuarios(usuariosData.usuarios ?? [])
-
         if (editando && id) {
           const res = await fetch(`/api/leads/${id}`, { credentials: 'include' })
           if (!res.ok) { setErro('Lead não encontrado.'); return }
@@ -92,14 +110,25 @@ export function FormularioLead() {
   }, [id, editando])
 
   function atualizarCampo<K extends keyof CamposFormulario>(campo: K, valor: CamposFormulario[K]) {
+    if (errosCampo[campo]) setErrosCampo((e) => ({ ...e, [campo]: undefined }))
     setCampos((atual) => ({ ...atual, [campo]: valor }))
+  }
+
+  function validarCampo(campo: keyof CamposFormulario) {
+    const novos = validarCampos(campos)
+    setErrosCampo((e) => ({ ...e, [campo]: novos[campo] }))
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    const erros = validarCampos(campos)
+    if (Object.keys(erros).length > 0) {
+      setErrosCampo(erros)
+      setErro('Corrija os campos destacados antes de salvar.')
+      return
+    }
     setErro(null)
     setSalvando(true)
-
     try {
       const body = {
         nome_empresa: campos.nome_empresa || null,
@@ -121,12 +150,7 @@ export function FormularioLead() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-
-      if (!res.ok) {
-        setErro(data.erro ?? 'Não foi possível salvar o lead.')
-        return
-      }
-
+      if (!res.ok) { setErro(data.erro ?? 'Não foi possível salvar o lead.'); return }
       navigate('/leads')
     } catch {
       setErro('Erro de conexão com o servidor.')
@@ -135,9 +159,9 @@ export function FormularioLead() {
     }
   }
 
-  if (carregando) {
-    return <p>Carregando...</p>
-  }
+  if (carregando) return <p>Carregando...</p>
+
+  const ec = errosCampo
 
   return (
     <section>
@@ -152,6 +176,7 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('nome_empresa', e.target.value)}
             />
           </div>
+
           <div className="campo">
             <label htmlFor="contato">Contato</label>
             <input
@@ -160,23 +185,33 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('contato', e.target.value)}
             />
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.telefone ? ' campo-invalido' : ''}`}>
             <label htmlFor="telefone">Telefone</label>
             <input
               id="telefone"
               value={campos.telefone}
-              onChange={(e) => atualizarCampo('telefone', e.target.value)}
+              onChange={(e) => atualizarCampo('telefone', mascaraTelefone(e.target.value))}
+              onBlur={() => validarCampo('telefone')}
+              placeholder="(11) 99999-9999"
+              maxLength={15}
             />
+            {ec.telefone && <span className="campo-erro">{ec.telefone}</span>}
           </div>
-          <div className="campo">
+
+          <div className={`campo${ec.email ? ' campo-invalido' : ''}`}>
             <label htmlFor="email">E-mail</label>
             <input
               id="email"
-              type="email"
+              type="text"
               value={campos.email}
               onChange={(e) => atualizarCampo('email', e.target.value)}
+              onBlur={() => validarCampo('email')}
+              placeholder="contato@empresa.com.br"
             />
+            {ec.email && <span className="campo-erro">{ec.email}</span>}
           </div>
+
           <div className="campo">
             <label htmlFor="cidade">Cidade</label>
             <input
@@ -185,6 +220,7 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('cidade', e.target.value)}
             />
           </div>
+
           <div className="campo">
             <label htmlFor="uf">UF</label>
             <input
@@ -194,6 +230,7 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
             />
           </div>
+
           <div className="campo campo-largo">
             <label htmlFor="assunto">Assunto</label>
             <input
@@ -202,6 +239,7 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('assunto', e.target.value)}
             />
           </div>
+
           <div className="campo campo-largo">
             <label htmlFor="mensagem">Mensagem</label>
             <textarea
@@ -210,6 +248,7 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('mensagem', e.target.value)}
             />
           </div>
+
           <div className="campo">
             <label htmlFor="origem">Origem</label>
             <input
@@ -219,6 +258,7 @@ export function FormularioLead() {
               onChange={(e) => atualizarCampo('origem', e.target.value)}
             />
           </div>
+
           <div className="campo">
             <label htmlFor="vendedor_id">Vendedor</label>
             <select
@@ -232,6 +272,7 @@ export function FormularioLead() {
               ))}
             </select>
           </div>
+
           <div className="campo">
             <label htmlFor="status">Status</label>
             <select
@@ -252,11 +293,7 @@ export function FormularioLead() {
           </p>
         )}
 
-        {erro && (
-          <p className="alerta-erro" role="alert">
-            {erro}
-          </p>
-        )}
+        {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
         <div className="barra-acoes-formulario">
           <button className="botao" type="submit" disabled={salvando}>
