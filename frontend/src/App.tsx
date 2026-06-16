@@ -18,6 +18,9 @@ import { Setup } from './pages/setup/Setup'
 import { Condicoes } from './pages/setup/Condicoes'
 import { Marcas } from './pages/setup/Marcas'
 import { Categorias } from './pages/setup/Categorias'
+import { ListaCampanhas } from './pages/campanhas/ListaCampanhas'
+import { NovaCampanha } from './pages/campanhas/NovaCampanha'
+import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -112,6 +115,7 @@ function App() {
           <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
           <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
+          <NavLink to="/campanhas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>E-mails</NavLink>
           {usuario.papel === 'admin' && (
             <>
               <button
@@ -162,6 +166,9 @@ function App() {
           <Route path="/usuarios" element={<ListaUsuarios />} />
           <Route path="/usuarios/novo" element={<FormularioUsuario />} />
           <Route path="/usuarios/:id/editar" element={<FormularioUsuario />} />
+          <Route path="/campanhas" element={<ListaCampanhas />} />
+          <Route path="/campanhas/nova" element={<NovaCampanha />} />
+          <Route path="/campanhas/grupos" element={<GruposEnvio />} />
           {usuario.papel === 'admin' && (
             <Route path="/setup" element={<Setup />} />
           )}

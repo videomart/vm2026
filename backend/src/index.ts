@@ -12,6 +12,7 @@ import { usuariosRouter } from './routes/usuarios.js'
 import { setupRouter } from './routes/setup.js'
 import { marcasRouter } from './routes/marcas.js'
 import { categoriasRouter } from './routes/categorias.js'
+import { campanhasRouter } from './routes/campanhas.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -31,6 +32,7 @@ app.use('/api/usuarios', usuariosRouter)
 app.use('/api/setup', setupRouter)
 app.use('/api/marcas', marcasRouter)
 app.use('/api/categorias', categoriasRouter)
+app.use('/api/campanhas', campanhasRouter)
 
 app.get('/api/health', async (_req, res) => {
   try {

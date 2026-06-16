@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { dataParaInput } from '../../utils/formatar'
 import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
 import { NavegadorRegistro } from '../../components/NavegadorRegistro'
+import { ModalEmailProposta } from './ModalEmailProposta'
 import type { ItemFormulario, Proposta, StatusProposta } from './types'
 import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
@@ -61,6 +62,7 @@ export function FormularioProposta() {
 
   // proposta carregada (para edição / visualização)
   const [proposta, setProposta] = useState<Proposta | null>(null)
+  const [modalEmail, setModalEmail] = useState(false)
 
   // campos do cabeçalho
   const [clienteId, setClienteId] = useState('')
@@ -572,11 +574,26 @@ export function FormularioProposta() {
             >
               🖨 Imprimir
             </a>
+            <button type="button" className="botao-secundario" onClick={() => setModalEmail(true)}>
+              ✉ Enviar por e-mail
+            </button>
             <button type="button" className="botao-secundario" onClick={() => navigate('/propostas')}>
               Voltar
             </button>
           </div>
         )}
+
+        {modalEmail && proposta && (() => {
+          const clienteSel = clientes.find((c) => String(c.id) === clienteId)
+          return (
+            <ModalEmailProposta
+              propostaId={proposta.id}
+              clienteEmail={clienteSel?.email ?? null}
+              clienteNome={clienteSel?.razao_social ?? ''}
+              onFechar={() => setModalEmail(false)}
+            />
+          )
+        })()}
 
         {/* ações para proposta aberta também quando editando */}
         {editando && proposta?.status === 'aberta' && (

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
+import { enviarEmail } from '../email.js'
 
 export const propostasRouter = Router()
 propostasRouter.use(requireAuth)
@@ -268,5 +269,62 @@ propostasRouter.post('/:id/converter', async (req, res) => {
     res.status(500).json({ erro: 'Erro ao converter proposta.' })
   } finally {
     conn.release()
+  }
+})
+
+// ------------------------------------------------------------------
+// POST /:id/email — envia proposta por e-mail ao cliente
+// ------------------------------------------------------------------
+propostasRouter.post('/:id/email', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT p.*,
+              c.razao_social AS cliente_nome,
+              c.email AS cliente_email,
+              u.nome AS vendedor_nome,
+              u.email AS vendedor_email
+       FROM propostas p
+       JOIN clientes c ON c.id = p.cliente_id
+       JOIN usuarios u ON u.id = p.vendedor_id
+       WHERE p.id = ?`,
+      [req.params.id],
+    )
+    const p = (rows as any[])[0]
+    if (!p) return res.status(404).json({ erro: 'Proposta não encontrada.' })
+
+    const [setupRows] = await pool.query('SELECT * FROM setup WHERE id = 1')
+    const setup = (setupRows as any[])[0] ?? {}
+
+    const { para, assunto, mensagem } = req.body
+
+    const destinatario = para || p.cliente_email
+    if (!destinatario) return res.status(400).json({ erro: 'Cliente não tem e-mail cadastrado.' })
+
+    const assuntoFinal = assunto?.trim() || `Proposta Comercial #${p.id} — ${setup.empresa_nome ?? 'Videomart Broadcast'}`
+
+    const linkProposta = `${process.env.FRONTEND_URL ?? 'http://localhost:8082'}/propostas/${p.id}/imprimir`
+
+    const html = `
+      <p>${mensagem ? mensagem.replace(/\n/g, '<br>') : `Olá, segue em anexo a proposta comercial <strong>#${p.id}</strong>.`}</p>
+      <p>Para visualizar e imprimir a proposta, acesse o link abaixo:</p>
+      <p><a href="${linkProposta}">${linkProposta}</a></p>
+      <br>
+      <p>Atenciosamente,<br>
+      <strong>${p.vendedor_nome}</strong><br>
+      ${setup.empresa_nome ?? 'Videomart Broadcast'}
+      ${setup.empresa_telefone ? '<br>' + setup.empresa_telefone : ''}
+      </p>
+    `
+
+    await enviarEmail({
+      to: destinatario,
+      subject: assuntoFinal,
+      html,
+      replyTo: p.vendedor_email || undefined,
+    })
+
+    res.json({ ok: true, enviado_para: destinatario })
+  } catch (e: any) {
+    res.status(500).json({ erro: e.message ?? 'Erro ao enviar e-mail.' })
   }
 })
