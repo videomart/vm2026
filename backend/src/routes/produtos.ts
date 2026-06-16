@@ -13,6 +13,8 @@ const CAMPOS_EDITAVEIS = [
   'categoria',
   'preco_custo',
   'preco_venda',
+  'moeda',
+  'preco_usd',
   'peso',
 ] as const
 
@@ -24,6 +26,24 @@ function dadosProduto(body: Record<string, unknown>) {
     if (campo in body) dados[campo] = body[campo] === '' ? null : body[campo]
   }
   return dados
+}
+
+/** Calcula preço sugerido em BRL para produto cotado em USD */
+async function calcularPrecoSugerido(precoUsd: number): Promise<number | null> {
+  try {
+    const [cotRows] = await pool.query(
+      'SELECT valor FROM cotacao_dolar ORDER BY data DESC LIMIT 1',
+    )
+    const cotacao = (cotRows as any[])[0]?.valor
+    if (!cotacao) return null
+
+    const [setupRows] = await pool.query('SELECT fator_markup_usd FROM setup WHERE id = 1')
+    const fator = Number((setupRows as any[])[0]?.fator_markup_usd ?? 1.3)
+
+    return Math.round(precoUsd * Number(cotacao) * fator * 100) / 100
+  } catch {
+    return null
+  }
 }
 
 produtosRouter.get('/', async (req, res) => {
@@ -53,9 +73,15 @@ produtosRouter.get('/', async (req, res) => {
 produtosRouter.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM produtos WHERE id = ?', [req.params.id])
-    const produto = (rows as unknown[])[0]
+    const produto = (rows as any[])[0]
     if (!produto) return res.status(404).json({ erro: 'Produto não encontrado.' })
-    res.json({ produto })
+
+    let preco_sugerido: number | null = null
+    if (produto.moeda === 'USD' && produto.preco_usd) {
+      preco_sugerido = await calcularPrecoSugerido(Number(produto.preco_usd))
+    }
+
+    res.json({ produto: { ...produto, preco_sugerido } })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar produto.' })
   }

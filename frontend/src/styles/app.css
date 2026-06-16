@@ -344,7 +344,13 @@
   display: flex;
   gap: 6px;
   align-items: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+}
+
+.tabela td:last-child {
+  white-space: nowrap;
+  width: 1%;  /* colapsa a coluna de ações ao mínimo necessário */
 }
 
 /* Formulários */
@@ -646,6 +652,48 @@
   margin-bottom: 20px;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* Navegador prev/next de registros */
+
+.navegador-registro {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: var(--bg-elevado);
+  border: 1px solid var(--border);
+  border-radius: var(--raio);
+  font-size: 13px;
+}
+
+.navegador-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-h);
+  padding: 4px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.navegador-btn:hover:not(:disabled) {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.navegador-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.navegador-posicao {
+  color: var(--text);
+  margin: 0 4px;
+  white-space: nowrap;
 }
 
 /* Dashboard */

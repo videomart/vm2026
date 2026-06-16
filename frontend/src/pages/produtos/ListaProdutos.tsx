@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarMoeda } from '../../utils/formatar'
+import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
 import type { Produto } from './types'
 
 export function ListaProdutos() {
+  const navigate = useNavigate()
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [busca, setBusca] = useState('')
   const [mostrarInativos, setMostrarInativos] = useState(false)
@@ -13,6 +15,11 @@ export function ListaProdutos() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(produtos, 'modelo')
+
+  function editarProduto(id: number) {
+    salvarNavegacao('nav_produtos', grid.ordenados.map((p) => p.id))
+    navigate(`/produtos/${id}/editar`)
+  }
 
   function carregar() {
     setCarregando(true)
@@ -98,7 +105,7 @@ export function ListaProdutos() {
                     </td>
                     <td>
                       <div className="acoes">
-                        <Link className="botao-link" to={`/produtos/${produto.id}/editar`}>Editar</Link>
+                        <button className="botao-link" type="button" onClick={() => editarProduto(produto.id)}>Editar</button>
                         {produto.ativo
                           ? <button className="botao-perigo" type="button" onClick={() => inativar(produto)}>Inativar</button>
                           : <button className="botao-secundario" type="button" onClick={() => reativar(produto)}>Reativar</button>}

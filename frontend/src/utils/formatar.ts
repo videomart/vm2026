@@ -46,3 +46,21 @@ export function formatarMoeda(valor: string | number | null | undefined): string
   if (valor == null || valor === '') return '—'
   return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+
+/**
+ * Formata um campo DATE do MySQL (string "YYYY-MM-DD" ou ISO "YYYY-MM-DDT...Z")
+ * sem conversão de fuso — usa os dígitos literais da string.
+ */
+export function formatarData(valor: string | null | undefined): string {
+  if (!valor) return '—'
+  const s = String(valor).slice(0, 10) // "YYYY-MM-DD"
+  const [ano, mes, dia] = s.split('-')
+  if (!ano || !mes || !dia) return valor
+  return `${dia}/${mes}/${ano}`
+}
+
+/** Extrai "YYYY-MM-DD" de um campo DATE do MySQL, para usar em input[type=date] */
+export function dataParaInput(valor: string | null | undefined): string {
+  if (!valor) return ''
+  return String(valor).slice(0, 10)
+}

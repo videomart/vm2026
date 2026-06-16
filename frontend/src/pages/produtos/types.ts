@@ -6,6 +6,9 @@ export type Produto = {
   categoria: string | null
   preco_custo: string | null
   preco_venda: string | null
+  moeda: 'BRL' | 'USD' | null
+  preco_usd: string | null
+  preco_sugerido?: number | null
   peso: string | null
   ativo: number
 }

@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { dataParaInput } from '../../utils/formatar'
+import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
+import { NavegadorRegistro } from '../../components/NavegadorRegistro'
 import type { ItemFormulario, Proposta, StatusProposta } from './types'
 import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
@@ -43,6 +46,7 @@ export function FormularioProposta() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioSimples[]>([])
   const [usuarioAtual, setUsuarioAtual] = useState<UsuarioSimples | null>(null)
+  const [listaCondicoes, setListaCondicoes] = useState<string[]>([])
 
   // proposta carregada (para edição / visualização)
   const [proposta, setProposta] = useState<Proposta | null>(null)
@@ -68,20 +72,22 @@ export function FormularioProposta() {
   useEffect(() => {
     async function init() {
       try {
-        const [resMe, resClientes, resProdutos, resUsuarios] = await Promise.all([
+        const [resMe, resClientes, resProdutos, resUsuarios, resCondicoes] = await Promise.all([
           fetch('/api/auth/me', { credentials: 'include' }),
           fetch('/api/clientes', { credentials: 'include' }),
           fetch('/api/produtos', { credentials: 'include' }),
           fetch('/api/auth/usuarios', { credentials: 'include' }),
+          fetch('/api/setup/condicoes', { credentials: 'include' }),
         ])
-        const [me, clientesData, produtosData, usuariosData] = await Promise.all([
-          resMe.json(), resClientes.json(), resProdutos.json(), resUsuarios.json(),
+        const [me, clientesData, produtosData, usuariosData, condicoesData] = await Promise.all([
+          resMe.json(), resClientes.json(), resProdutos.json(), resUsuarios.json(), resCondicoes.json(),
         ])
 
         setUsuarioAtual(me.usuario)
         setClientes(clientesData.clientes ?? [])
         setProdutos(produtosData.produtos ?? [])
         setUsuarios(usuariosData.usuarios ?? [])
+        setListaCondicoes((condicoesData.condicoes ?? []).map((c: { descricao: string }) => c.descricao))
 
         if (me.usuario) {
           setVendedorId(String(me.usuario.id))
@@ -94,8 +100,8 @@ export function FormularioProposta() {
           setProposta(p)
           setClienteId(String(p.cliente_id))
           setVendedorId(String(p.vendedor_id))
-          setData(p.data.slice(0, 10))
-          setValidade(p.validade ? p.validade.slice(0, 10) : '')
+          setData(dataParaInput(p.data))
+          setValidade(dataParaInput(p.validade))
           setCondicoes(p.condicoes_pagamento ?? '')
           setObservacoes(p.observacoes ?? '')
           setDesconto(String(p.desconto ?? '0'))
@@ -217,10 +223,23 @@ export function FormularioProposta() {
     setProposta((prev) => prev ? { ...prev, status: 'convertida' } : prev)
   }
 
+  const nav = useNavegacaoRegistro('nav_propostas', id, '/propostas')
+
   if (carregando) return <p>Carregando...</p>
 
   return (
     <section>
+      {editando && (
+        <NavegadorRegistro
+          temAnterior={nav.temAnterior}
+          temProximo={nav.temProximo}
+          posicao={nav.posicao}
+          total={nav.total}
+          onAnterior={nav.irAnterior}
+          onProximo={nav.irProximo}
+          label="Proposta"
+        />
+      )}
       <div className="cabecalho-secao">
         <h2>
           {editando ? `Proposta #${id}` : 'Nova proposta'}
@@ -283,7 +302,17 @@ export function FormularioProposta() {
           </div>
           <div className="campo campo-largo">
             <label htmlFor="condicoes">Condições de pagamento</label>
-            <input id="condicoes" value={condicoes} onChange={(e) => setCondicoes(e.target.value)} disabled={somenteLeitura} />
+            <input
+              id="condicoes"
+              list="lista-condicoes"
+              value={condicoes}
+              onChange={(e) => setCondicoes(e.target.value)}
+              disabled={somenteLeitura}
+              autoComplete="off"
+            />
+            <datalist id="lista-condicoes">
+              {listaCondicoes.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </div>
           <div className="campo campo-largo">
             <label htmlFor="observacoes">Observações</label>

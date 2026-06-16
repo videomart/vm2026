@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
 import { Paginacao } from '../../components/Paginacao'
-import { formatarMoeda } from '../../utils/formatar'
+import { formatarMoeda, formatarData } from '../../utils/formatar'
+import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
 import type { Proposta, StatusProposta } from './types'
 
 const LABELS_STATUS: Record<StatusProposta, string> = {
@@ -19,11 +20,8 @@ const CLASSES_STATUS: Record<StatusProposta, string> = {
   convertida: 'badge badge-convertida',
 }
 
-function formatarData(data: string) {
-  return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')
-}
-
 export function ListaPropostas() {
+  const navigate = useNavigate()
   const [propostas, setPropostas] = useState<Proposta[]>([])
   const [filtroStatus, setFiltroStatus] = useState<StatusProposta | ''>('')
   const [busca, setBusca] = useState('')
@@ -31,6 +29,11 @@ export function ListaPropostas() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(propostas, 'data')
+
+  function abrirProposta(p: Proposta) {
+    salvarNavegacao('nav_propostas', grid.ordenados.map((x) => x.id))
+    navigate(`/propostas/${p.id}`)
+  }
 
   function carregar() {
     setCarregando(true)
@@ -107,9 +110,9 @@ export function ListaPropostas() {
                     <td><span className={CLASSES_STATUS[p.status]}>{LABELS_STATUS[p.status]}</span></td>
                     <td>
                       <div className="acoes">
-                        <Link className="botao-link" to={`/propostas/${p.id}`}>
+                        <button className="botao-link" type="button" onClick={() => abrirProposta(p)}>
                           {p.status === 'aberta' ? 'Editar' : 'Ver'}
-                        </Link>
+                        </button>
                       </div>
                     </td>
                   </tr>

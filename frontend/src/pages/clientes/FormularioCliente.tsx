@@ -10,6 +10,9 @@ import {
   validarEmail,
   validarCEP,
 } from '../../utils/validacoes'
+import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
+import { NavegadorRegistro } from '../../components/NavegadorRegistro'
+import { formatarData } from '../../utils/formatar'
 import type { Cliente } from './types'
 
 type CamposFormulario = Omit<Cliente, 'id' | 'ativo'>
@@ -64,6 +67,7 @@ export function FormularioCliente() {
   const editando = Boolean(id)
 
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
+  const [criadoEm, setCriadoEm] = useState<string | null>(null)
   const [errosCampo, setErrosCampo] = useState<Erros>({})
   const [carregando, setCarregando] = useState(editando)
   const [salvando, setSalvando] = useState(false)
@@ -73,7 +77,10 @@ export function FormularioCliente() {
     if (!editando) return
     fetch(`/api/clientes/${id}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => setCampos(paraFormulario(data.cliente)))
+      .then((data) => {
+        setCampos(paraFormulario(data.cliente))
+        setCriadoEm(data.cliente.criado_em ?? null)
+      })
       .catch(() => setErro('Não foi possível carregar o cliente.'))
       .finally(() => setCarregando(false))
   }, [id, editando])
@@ -116,13 +123,33 @@ export function FormularioCliente() {
     }
   }
 
+  const nav = useNavegacaoRegistro('nav_clientes', id, '/clientes')
+
   if (carregando) return <p>Carregando...</p>
 
   const ec = errosCampo
 
   return (
     <section>
-      <h2>{editando ? 'Editar cliente' : 'Novo cliente'}</h2>
+      {editando && (
+        <NavegadorRegistro
+          temAnterior={nav.temAnterior}
+          temProximo={nav.temProximo}
+          posicao={nav.posicao}
+          total={nav.total}
+          onAnterior={nav.irAnterior}
+          onProximo={nav.irProximo}
+          label="Cliente"
+        />
+      )}
+      <h2>
+        {editando ? 'Editar cliente' : 'Novo cliente'}
+        {criadoEm && (
+          <span style={{ fontSize: '13px', fontWeight: 400, color: 'var(--text)', marginLeft: '16px' }}>
+            Cadastrado em {formatarData(criadoEm)}
+          </span>
+        )}
+      </h2>
       <form onSubmit={handleSubmit}>
         <div className="grade-formulario">
 

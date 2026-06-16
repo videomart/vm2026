@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
 import { Paginacao } from '../../components/Paginacao'
-import { formatarCNPJCPF, formatarTelefone } from '../../utils/formatar'
+import { formatarCNPJCPF, formatarTelefone, formatarData } from '../../utils/formatar'
+import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
 import type { Cliente } from './types'
 
 export function ListaClientes() {
+  const navigate = useNavigate()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [busca, setBusca] = useState('')
   const [mostrarInativos, setMostrarInativos] = useState(false)
@@ -13,6 +15,11 @@ export function ListaClientes() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(clientes, 'razao_social')
+
+  function editarCliente(id: number) {
+    salvarNavegacao('nav_clientes', grid.ordenados.map((c) => c.id))
+    navigate(`/clientes/${id}/editar`)
+  }
 
   function carregar() {
     setCarregando(true)
@@ -76,6 +83,7 @@ export function ListaClientes() {
                   <th {...grid.th('cnpj_cpf')}>CNPJ/CPF</th>
                   <th {...grid.th('telefone')}>Telefone</th>
                   <th {...grid.th('cidade')}>Cidade/UF</th>
+                  <th {...grid.th('criado_em')}>Cadastrado em</th>
                   <th {...grid.th('ativo')}>Status</th>
                   <th>Ações</th>
                 </tr>
@@ -88,6 +96,7 @@ export function ListaClientes() {
                     <td>{cliente.cnpj_cpf ? formatarCNPJCPF(cliente.cnpj_cpf) : '—'}</td>
                     <td>{cliente.telefone ? formatarTelefone(cliente.telefone) : '—'}</td>
                     <td>{cliente.cidade ?? '—'}{cliente.uf ? `/${cliente.uf}` : ''}</td>
+                    <td>{formatarData(cliente.criado_em)}</td>
                     <td>
                       {cliente.ativo
                         ? <span className="badge badge-ativo">Ativo</span>
@@ -95,7 +104,7 @@ export function ListaClientes() {
                     </td>
                     <td>
                       <div className="acoes">
-                        <Link className="botao-link" to={`/clientes/${cliente.id}/editar`}>Editar</Link>
+                        <button className="botao-link" type="button" onClick={() => editarCliente(cliente.id)}>Editar</button>
                         {cliente.ativo
                           ? <button className="botao-perigo" type="button" onClick={() => inativar(cliente)}>Inativar</button>
                           : <button className="botao-secundario" type="button" onClick={() => reativar(cliente)}>Reativar</button>}

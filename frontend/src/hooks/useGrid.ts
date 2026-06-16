@@ -73,6 +73,7 @@ export function useGrid<T>(itens: T[], colunaInicial?: keyof T, tamanhoPadrao: T
 
   return {
     pagina_atual,
+    ordenados,
     th,
     pagina: paginaEfetiva,
     totalPaginas,

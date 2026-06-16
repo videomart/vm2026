@@ -1,16 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
+import { formatarData } from '../../utils/formatar'
 import type { Proposta } from './types'
 
 function fmt(v: number | string) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtData(s: string | null | undefined) {
-  if (!s) return '—'
-  const d = new Date(s)
-  return isNaN(d.getTime()) ? s : d.toLocaleDateString('pt-BR')
-}
+const fmtData = formatarData
 
 export function ImpressaoProposta() {
   const { id } = useParams()

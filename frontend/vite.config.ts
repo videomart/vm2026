@@ -7,6 +7,7 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    allowedHosts: ['vm2026.tvtupi.com.br'],
     proxy: {
       '/api': {
         target: 'http://backend:3001',
