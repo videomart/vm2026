@@ -16,6 +16,23 @@ function fmt(v: number | string) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function stripHtml(texto: string | null | undefined): string {
+  if (!texto) return ''
+  return texto
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#\d+;/g, ' ')
+    .replace(/&[a-z]+;/gi, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 const fmtData = formatarData
 
 export function ImpressaoProposta() {
@@ -34,7 +51,12 @@ export function ImpressaoProposta() {
         return Promise.all([rp.json(), rs.ok ? rs.json() : Promise.resolve(null)])
       })
       .then(([dp, ds]) => {
-        setProposta(dp.proposta)
+        const p = dp.proposta
+        if (p) {
+          p.condicoes_pagamento = stripHtml(p.condicoes_pagamento)
+          p.observacoes = stripHtml(p.observacoes)
+        }
+        setProposta(p)
         if (ds?.setup) setEmpresa(ds.setup)
       })
       .catch((e) => setErro(e === 401 ? 'Sessão expirada. Faça login novamente.' : 'Proposta não encontrada.'))
