@@ -68,6 +68,19 @@ export function FormularioProposta() {
   const [erro, setErro] = useState<string | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
 
+  async function recarregarClientes() {
+    const res = await fetch('/api/clientes', { credentials: 'include' })
+    const data = await res.json()
+    setClientes(data.clientes ?? [])
+  }
+
+  // recarrega lista de clientes ao retornar de aba de novo cliente
+  useEffect(() => {
+    function onFocus() { recarregarClientes() }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
   // carrega dados auxiliares + proposta (se editando)
   useEffect(() => {
     async function init() {
@@ -262,21 +275,36 @@ export function FormularioProposta() {
       <form onSubmit={handleSubmit}>
         {/* cabeçalho */}
         <div className="grade-formulario">
-          <div className="campo campo-largo">
+
+          {/* Cliente + botão novo cliente */}
+          <div className="campo" style={{ gridColumn: 'span 2' }}>
             <label htmlFor="cliente_id">Cliente *</label>
-            <select
-              id="cliente_id"
-              value={clienteId}
-              onChange={(e) => setClienteId(e.target.value)}
-              required
-              disabled={somenteLeitura}
-            >
-              <option value="">— Selecione —</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>{c.razao_social}{c.nome_fantasia ? ` / ${c.nome_fantasia}` : ''}</option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <select
+                id="cliente_id"
+                value={clienteId}
+                onChange={(e) => setClienteId(e.target.value)}
+                required
+                disabled={somenteLeitura}
+                style={{ flex: 1 }}
+              >
+                <option value="">— Selecione —</option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.razao_social}{c.nome_fantasia ? ` / ${c.nome_fantasia}` : ''}</option>
+                ))}
+              </select>
+              {!somenteLeitura && (
+                <button
+                  type="button"
+                  className="botao-secundario"
+                  title="Cadastrar novo cliente"
+                  onClick={() => window.open('/clientes/novo', '_blank')}
+                  style={{ whiteSpace: 'nowrap', alignSelf: 'stretch' }}
+                >+ Cliente</button>
+              )}
+            </div>
           </div>
+
           <div className="campo">
             <label htmlFor="vendedor_id">Vendedor *</label>
             <select
@@ -300,7 +328,9 @@ export function FormularioProposta() {
             <label htmlFor="validade">Validade</label>
             <input id="validade" type="date" value={validade} onChange={(e) => setValidade(e.target.value)} disabled={somenteLeitura} />
           </div>
-          <div className="campo campo-largo">
+
+          {/* Condições e Observações na mesma linha */}
+          <div className="campo">
             <label htmlFor="condicoes">Condições de pagamento</label>
             <input
               id="condicoes"
@@ -314,9 +344,9 @@ export function FormularioProposta() {
               {listaCondicoes.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
-          <div className="campo campo-largo">
+          <div className="campo">
             <label htmlFor="observacoes">Observações</label>
-            <textarea id="observacoes" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={somenteLeitura} />
+            <textarea id="observacoes" rows={1} value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={somenteLeitura} />
           </div>
         </div>
 

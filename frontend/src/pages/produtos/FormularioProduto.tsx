@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
@@ -44,6 +44,15 @@ function paraFormulario(produto: Produto): CamposFormulario {
   }
 }
 
+function gerarDescricao(c: CamposFormulario): string {
+  const partes: string[] = []
+  if (c.categoria) partes.push(c.categoria)
+  if (c.marca) partes.push(c.marca)
+  if (c.modelo) partes.push(c.modelo)
+  if (c.peso) partes.push(`peso=${c.peso}kg`)
+  return partes.join(' ')
+}
+
 export function FormularioProduto() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -51,16 +60,31 @@ export function FormularioProduto() {
 
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
   const [precoSugerido, setPrecoSugerido] = useState<number | null>(null)
+  // setup para cálculo local do preço de venda sugerido
+  const setupRef = useRef<{ fator: number; cotacao: number | null }>({ fator: 1.3, cotacao: null })
+  const descricaoEditada = useRef(false)
+
   const [carregando, setCarregando] = useState(editando)
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
+    // Carrega setup e cotação para cálculo local
+    Promise.all([
+      fetch('/api/setup', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+      fetch('/api/setup/cotacao', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+    ]).then(([ds, dco]) => {
+      const fator = Number(ds?.setup?.fator_markup_usd ?? 1.3)
+      const cotacao = dco?.cotacao?.valor ? Number(dco.cotacao.valor) : null
+      setupRef.current = { fator, cotacao }
+    })
+
     if (!editando) return
 
     fetch(`/api/produtos/${id}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
+        descricaoEditada.current = true // em edição não sobrescreve a descrição
         setCampos(paraFormulario(data.produto))
         setPrecoSugerido(data.produto.preco_sugerido ?? null)
       })
@@ -68,11 +92,51 @@ export function FormularioProduto() {
       .finally(() => setCarregando(false))
   }, [id, editando])
 
-  function atualizarCampo(campo: keyof CamposFormulario, valor: string) {
-    setCampos((atual) => ({ ...atual, [campo]: valor }))
-    if (campo === 'moeda' && valor === 'BRL') {
-      setPrecoSugerido(null)
+  function calcularVenda(c: CamposFormulario): string {
+    const { fator, cotacao } = setupRef.current
+    if (c.moeda === 'USD') {
+      const usd = Number(c.preco_usd)
+      if (!usd || !cotacao) return ''
+      return String(Math.round(usd * cotacao * fator * 100) / 100)
     }
+    const custo = Number(c.preco_custo)
+    if (!custo) return ''
+    return String(Math.round(custo * fator * 100) / 100)
+  }
+
+  function atualizar(campo: keyof CamposFormulario, valor: string) {
+    setCampos((prev) => {
+      const novo = { ...prev, [campo]: valor }
+
+      // auto-descrição: só enquanto o usuário não editou manualmente
+      if (!descricaoEditada.current && campo !== 'descricao') {
+        novo.descricao = gerarDescricao(novo)
+      }
+
+      // sugestão de preço de venda ao alterar custo/usd/moeda
+      if (['preco_custo', 'preco_usd', 'moeda'].includes(campo)) {
+        novo.preco_venda = calcularVenda(novo)
+        if (campo === 'moeda' && valor === 'BRL') setPrecoSugerido(null)
+        if (campo === 'moeda' && valor === 'USD') {
+          // recalcula sugerido a partir do preco_usd atual
+          const { cotacao, fator } = setupRef.current
+          const usd = Number(novo.preco_usd)
+          setPrecoSugerido(usd && cotacao ? Math.round(usd * cotacao * fator * 100) / 100 : null)
+        }
+        if (campo === 'preco_usd' && prev.moeda === 'USD') {
+          const { cotacao, fator } = setupRef.current
+          const usd = Number(valor)
+          setPrecoSugerido(usd && cotacao ? Math.round(usd * cotacao * fator * 100) / 100 : null)
+        }
+      }
+
+      return novo
+    })
+  }
+
+  function onDescricaoChange(valor: string) {
+    descricaoEditada.current = true
+    setCampos((prev) => ({ ...prev, descricao: valor }))
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -81,9 +145,7 @@ export function FormularioProduto() {
     setSalvando(true)
 
     const body: Record<string, unknown> = { ...campos }
-    if (campos.moeda === 'BRL') {
-      body.preco_usd = null
-    }
+    if (campos.moeda === 'BRL') body.preco_usd = null
 
     try {
       const res = await fetch(editando ? `/api/produtos/${id}` : '/api/produtos', {
@@ -93,12 +155,7 @@ export function FormularioProduto() {
         body: JSON.stringify(body),
       })
       const data = await res.json()
-
-      if (!res.ok) {
-        setErro(data.erro ?? 'Não foi possível salvar o produto.')
-        return
-      }
-
+      if (!res.ok) { setErro(data.erro ?? 'Não foi possível salvar o produto.'); return }
       navigate('/produtos')
     } catch {
       setErro('Erro de conexão com o servidor.')
@@ -127,21 +184,25 @@ export function FormularioProduto() {
       <h2>{editando ? 'Editar produto' : 'Novo produto'}</h2>
       <form onSubmit={handleSubmit}>
         <div className="grade-formulario">
+
+          {/* Linha 1: Modelo (largo) */}
           <div className="campo campo-largo">
             <label htmlFor="modelo">Modelo *</label>
             <input
               id="modelo"
               value={campos.modelo}
-              onChange={(e) => atualizarCampo('modelo', e.target.value)}
+              onChange={(e) => atualizar('modelo', e.target.value)}
               required
             />
           </div>
-          <div className="campo campo-largo">
-            <label htmlFor="descricao">Descrição</label>
+
+          {/* Linha 2: Categoria, Marca, Peso */}
+          <div className="campo">
+            <label htmlFor="categoria">Categoria</label>
             <input
-              id="descricao"
-              value={campos.descricao}
-              onChange={(e) => atualizarCampo('descricao', e.target.value)}
+              id="categoria"
+              value={campos.categoria}
+              onChange={(e) => atualizar('categoria', e.target.value)}
             />
           </div>
           <div className="campo">
@@ -149,84 +210,9 @@ export function FormularioProduto() {
             <input
               id="marca"
               value={campos.marca}
-              onChange={(e) => atualizarCampo('marca', e.target.value)}
+              onChange={(e) => atualizar('marca', e.target.value)}
             />
           </div>
-          <div className="campo">
-            <label htmlFor="categoria">Categoria</label>
-            <input
-              id="categoria"
-              value={campos.categoria}
-              onChange={(e) => atualizarCampo('categoria', e.target.value)}
-            />
-          </div>
-          <div className="campo">
-            <label htmlFor="preco_custo">Preço de custo (R$)</label>
-            <input
-              id="preco_custo"
-              type="number"
-              min="0"
-              step="0.01"
-              value={campos.preco_custo}
-              onChange={(e) => atualizarCampo('preco_custo', e.target.value)}
-            />
-          </div>
-
-          {/* ── Moeda ── */}
-          <div className="campo">
-            <label htmlFor="moeda">Moeda do preço de venda</label>
-            <select
-              id="moeda"
-              value={campos.moeda}
-              onChange={(e) => atualizarCampo('moeda', e.target.value as 'BRL' | 'USD')}
-            >
-              <option value="BRL">Real (BRL)</option>
-              <option value="USD">Dólar (USD)</option>
-            </select>
-          </div>
-
-          {campos.moeda === 'BRL' ? (
-            <div className="campo">
-              <label htmlFor="preco_venda">Preço de venda (R$)</label>
-              <input
-                id="preco_venda"
-                type="number"
-                min="0"
-                step="0.01"
-                value={campos.preco_venda}
-                onChange={(e) => atualizarCampo('preco_venda', e.target.value)}
-              />
-            </div>
-          ) : (
-            <>
-              <div className="campo">
-                <label htmlFor="preco_usd">Preço em dólar (US$)</label>
-                <input
-                  id="preco_usd"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={campos.preco_usd}
-                  onChange={(e) => atualizarCampo('preco_usd', e.target.value)}
-                />
-              </div>
-              {precoSugerido !== null && (
-                <div className="campo">
-                  <label>Preço sugerido em R$ (calculado)</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={formatarMoeda(precoSugerido)}
-                    style={{ background: 'var(--bg-alt)', cursor: 'default' }}
-                  />
-                  <span style={{ fontSize: '12px', color: 'var(--text)' }}>
-                    preço USD × cotação do dia × fator de markup (setup)
-                  </span>
-                </div>
-              )}
-            </>
-          )}
-
           <div className="campo">
             <label htmlFor="peso">Peso (kg)</label>
             <input
@@ -235,16 +221,89 @@ export function FormularioProduto() {
               min="0"
               step="0.001"
               value={campos.peso}
-              onChange={(e) => atualizarCampo('peso', e.target.value)}
+              onChange={(e) => atualizar('peso', e.target.value)}
             />
           </div>
+
+          {/* Linha 3: Descrição (largo) */}
+          <div className="campo campo-largo">
+            <label htmlFor="descricao">Descrição</label>
+            <input
+              id="descricao"
+              value={campos.descricao}
+              onChange={(e) => onDescricaoChange(e.target.value)}
+            />
+          </div>
+
+          {/* Linha 4: Moeda */}
+          <div className="campo">
+            <label htmlFor="moeda">Moeda</label>
+            <select
+              id="moeda"
+              value={campos.moeda}
+              onChange={(e) => atualizar('moeda', e.target.value as 'BRL' | 'USD')}
+            >
+              <option value="BRL">Real (BRL)</option>
+              <option value="USD">Dólar (USD)</option>
+            </select>
+          </div>
+
+          {/* Linha 5: Preços */}
+          <div className="campo">
+            <label htmlFor="preco_custo">
+              {campos.moeda === 'USD' ? 'Preço de compra (R$)' : 'Preço de compra (R$)'}
+            </label>
+            <input
+              id="preco_custo"
+              type="number"
+              min="0"
+              step="0.01"
+              value={campos.preco_custo}
+              onChange={(e) => atualizar('preco_custo', e.target.value)}
+            />
+          </div>
+
+          {campos.moeda === 'USD' && (
+            <div className="campo">
+              <label htmlFor="preco_usd">Preço de compra (US$)</label>
+              <input
+                id="preco_usd"
+                type="number"
+                min="0"
+                step="0.01"
+                value={campos.preco_usd}
+                onChange={(e) => atualizar('preco_usd', e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="campo">
+            <label htmlFor="preco_venda">
+              Preço de venda (R$)
+              {campos.moeda === 'USD' && setupRef.current.cotacao
+                ? ` — sugerido via US$ × cotação × fator`
+                : campos.preco_custo
+                ? ` — sugerido via custo × fator`
+                : ''}
+            </label>
+            <input
+              id="preco_venda"
+              type="number"
+              min="0"
+              step="0.01"
+              value={campos.preco_venda}
+              onChange={(e) => atualizar('preco_venda', e.target.value)}
+            />
+            {campos.moeda === 'USD' && precoSugerido !== null && (
+              <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+                Calculado: {formatarMoeda(precoSugerido)} (preço salvo pode diferir da sugestão acima)
+              </span>
+            )}
+          </div>
+
         </div>
 
-        {erro && (
-          <p className="alerta-erro" role="alert">
-            {erro}
-          </p>
-        )}
+        {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
         <div className="barra-acoes-formulario">
           <button className="botao" type="submit" disabled={salvando}>
