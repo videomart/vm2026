@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useOrdenacao } from '../../hooks/useOrdenacao'
+import { useGrid } from '../../hooks/useGrid'
+import { Paginacao } from '../../components/Paginacao'
 import type { Usuario } from './types'
 
 const LABELS_PAPEL: Record<Usuario['papel'], string> = {
@@ -16,7 +17,7 @@ export function ListaUsuarios() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const { ordenados, props: th } = useOrdenacao(usuarios, 'nome')
+  const grid = useGrid(usuarios, 'nome')
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -33,21 +34,14 @@ export function ListaUsuarios() {
     if (mostrarInativos) parametros.set('incluirInativos', '1')
     fetch(`/api/usuarios?${parametros.toString()}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => setUsuarios(data.usuarios))
+      .then((data) => { setUsuarios(data.usuarios); grid.resetar() })
       .catch((res) => {
-        if (res?.status === 403) {
-          setErro('Acesso restrito a administradores.')
-        } else {
-          setErro('Não foi possível carregar os usuários.')
-        }
+        setErro(res?.status === 403 ? 'Acesso restrito a administradores.' : 'Não foi possível carregar os usuários.')
       })
       .finally(() => setCarregando(false))
   }
 
-  useEffect(() => {
-    carregar()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mostrarInativos])
+  useEffect(() => { carregar() }, [mostrarInativos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function formatarData(data: string) {
     return new Date(data).toLocaleDateString('pt-BR')
@@ -92,46 +86,56 @@ export function ListaUsuarios() {
           {carregando && <p className="estado-vazio">Carregando...</p>}
           {!carregando && usuarios.length === 0 && <p className="estado-vazio">Nenhum usuário encontrado.</p>}
           {!carregando && usuarios.length > 0 && (
-            <table className="tabela">
-              <thead>
-                <tr>
-                  <th {...th('nome')}>Nome</th>
-                  <th {...th('email')}>E-mail</th>
-                  <th {...th('papel')}>Papel</th>
-                  <th {...th('criado_em')}>Cadastrado em</th>
-                  <th {...th('ativo')}>Status</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ordenados.map((usuario) => (
-                  <tr key={usuario.id}>
-                    <td>
-                      {usuario.nome}
-                      {usuario.id === usuarioId && <span style={{ color: 'var(--text)' }}> (você)</span>}
-                    </td>
-                    <td>{usuario.email}</td>
-                    <td>{LABELS_PAPEL[usuario.papel]}</td>
-                    <td>{formatarData(usuario.criado_em)}</td>
-                    <td>
-                      {usuario.ativo
-                        ? <span className="badge badge-ativo">Ativo</span>
-                        : <span className="badge badge-inativo">Inativo</span>}
-                    </td>
-                    <td>
-                      <div className="acoes">
-                        <Link className="botao-link" to={`/usuarios/${usuario.id}/editar`}>Editar</Link>
-                        {usuario.ativo
-                          ? usuario.id !== usuarioId && (
-                            <button className="botao-perigo" type="button" onClick={() => bloquear(usuario)}>Bloquear</button>
-                          )
-                          : <button className="botao-secundario" type="button" onClick={() => reativar(usuario)}>Reativar</button>}
-                      </div>
-                    </td>
+            <>
+              <table className="tabela">
+                <thead>
+                  <tr>
+                    <th {...grid.th('nome')}>Nome</th>
+                    <th {...grid.th('email')}>E-mail</th>
+                    <th {...grid.th('papel')}>Papel</th>
+                    <th {...grid.th('criado_em')}>Cadastrado em</th>
+                    <th {...grid.th('ativo')}>Status</th>
+                    <th>Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {grid.pagina_atual.map((usuario) => (
+                    <tr key={usuario.id}>
+                      <td>
+                        {usuario.nome}
+                        {usuario.id === usuarioId && <span style={{ color: 'var(--text)' }}> (você)</span>}
+                      </td>
+                      <td>{usuario.email}</td>
+                      <td>{LABELS_PAPEL[usuario.papel]}</td>
+                      <td>{formatarData(usuario.criado_em)}</td>
+                      <td>
+                        {usuario.ativo
+                          ? <span className="badge badge-ativo">Ativo</span>
+                          : <span className="badge badge-inativo">Inativo</span>}
+                      </td>
+                      <td>
+                        <div className="acoes">
+                          <Link className="botao-link" to={`/usuarios/${usuario.id}/editar`}>Editar</Link>
+                          {usuario.ativo
+                            ? usuario.id !== usuarioId && (
+                              <button className="botao-perigo" type="button" onClick={() => bloquear(usuario)}>Bloquear</button>
+                            )
+                            : <button className="botao-secundario" type="button" onClick={() => reativar(usuario)}>Reativar</button>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Paginacao
+                pagina={grid.pagina}
+                totalPaginas={grid.totalPaginas}
+                total={grid.total}
+                tamanho={grid.tamanho}
+                onIrPara={grid.irPara}
+                onMudarTamanho={grid.mudarTamanho}
+              />
+            </>
           )}
         </div>
       )}

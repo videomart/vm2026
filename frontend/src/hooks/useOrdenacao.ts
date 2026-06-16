@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 
 export type Direcao = 'asc' | 'desc'
 
-export function useOrdenacao<T>(itens: T[], colunaInicial?: keyof T) {
+export function useOrdenacao<T>(itens: T[], colunaInicial?: keyof T, onMudar?: () => void) {
   const [coluna, setColuna] = useState<keyof T | null>(colunaInicial ?? null)
   const [direcao, setDirecao] = useState<Direcao>('asc')
 
@@ -13,6 +13,7 @@ export function useOrdenacao<T>(itens: T[], colunaInicial?: keyof T) {
       setColuna(col)
       setDirecao('asc')
     }
+    onMudar?.()
   }
 
   const ordenados = useMemo(() => {

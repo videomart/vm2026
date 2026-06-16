@@ -490,6 +490,93 @@
   border-bottom: none;
 }
 
+/* Paginação */
+
+.paginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-elevado);
+  border-radius: 0 0 var(--raio) var(--raio);
+  font-size: 13px;
+}
+
+.paginacao-info {
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.paginacao-controles {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.paginacao-btn {
+  min-width: 30px;
+  height: 30px;
+  padding: 0 6px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-h);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  line-height: 1;
+}
+
+.paginacao-btn:hover:not(:disabled) {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.paginacao-btn-ativo {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.paginacao-btn-ativo:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  color: #fff !important;
+}
+
+.paginacao-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.paginacao-reticencias {
+  padding: 0 4px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.paginacao-tamanho {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.paginacao-tamanho select {
+  padding: 3px 6px;
+  font-size: 13px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-h);
+}
+
 /* Badges de status */
 
 .badge {

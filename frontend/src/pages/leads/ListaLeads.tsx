@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useOrdenacao } from '../../hooks/useOrdenacao'
+import { useGrid } from '../../hooks/useGrid'
+import { Paginacao } from '../../components/Paginacao'
+import { formatarTelefone } from '../../utils/formatar'
 import type { Lead, StatusLead } from './types'
 
 const LABELS_STATUS: Record<StatusLead, string> = {
@@ -30,7 +32,7 @@ export function ListaLeads() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const { ordenados, props: th } = useOrdenacao(leads, 'criado_em')
+  const grid = useGrid(leads, 'criado_em')
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -48,7 +50,7 @@ export function ListaLeads() {
     if (meusLeads && usuarioId) params.set('vendedorId', String(usuarioId))
     fetch(`/api/leads?${params}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then((d) => setLeads(d.leads))
+      .then((d) => { setLeads(d.leads); grid.resetar() })
       .catch(() => setErro('Não foi possível carregar os leads.'))
       .finally(() => setCarregando(false))
   }
@@ -98,50 +100,57 @@ export function ListaLeads() {
         {carregando && <p className="estado-vazio">Carregando...</p>}
         {!carregando && leads.length === 0 && <p className="estado-vazio">Nenhum lead encontrado.</p>}
         {!carregando && leads.length > 0 && (
-          <table className="tabela">
-            <thead>
-              <tr>
-                <th {...th('nome_empresa')}>Empresa / Contato</th>
-                <th>Telefone / E-mail</th>
-                <th {...th('cidade')}>Cidade/UF</th>
-                <th {...th('origem')}>Origem</th>
-                <th {...th('vendedor_nome')}>Vendedor</th>
-                <th {...th('status')}>Status</th>
-                <th {...th('criado_em')}>Recebido em</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordenados.map((l) => (
-                <tr key={l.id}>
-                  <td>
-                    {l.nome_empresa ?? '—'}
-                    {l.contato && <div style={{ fontSize: '0.85em', color: 'var(--text)' }}>{l.contato}</div>}
-                  </td>
-                  <td>
-                    {l.telefone ?? '—'}
-                    {l.email && <div style={{ fontSize: '0.85em', color: 'var(--text)' }}>{l.email}</div>}
-                  </td>
-                  <td>
-                    {l.cidade ?? '—'}
-                    {l.uf ? `/${l.uf}` : ''}
-                  </td>
-                  <td>{l.origem ?? '—'}</td>
-                  <td>{l.vendedor_nome ?? '—'}</td>
-                  <td><span className={CLASSES_STATUS[l.status]}>{LABELS_STATUS[l.status]}</span></td>
-                  <td>{formatarData(l.criado_em)}</td>
-                  <td>
-                    <div className="acoes">
-                      <Link className="botao-link" to={`/leads/${l.id}`}>Ver</Link>
-                      {!l.vendedor_id && (
-                        <button className="botao-secundario" type="button" onClick={() => assumir(l)}>Assumir</button>
-                      )}
-                    </div>
-                  </td>
+          <>
+            <table className="tabela">
+              <thead>
+                <tr>
+                  <th {...grid.th('nome_empresa')}>Empresa / Contato</th>
+                  <th>Telefone / E-mail</th>
+                  <th {...grid.th('cidade')}>Cidade/UF</th>
+                  <th {...grid.th('origem')}>Origem</th>
+                  <th {...grid.th('vendedor_nome')}>Vendedor</th>
+                  <th {...grid.th('status')}>Status</th>
+                  <th {...grid.th('criado_em')}>Recebido em</th>
+                  <th>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {grid.pagina_atual.map((l) => (
+                  <tr key={l.id}>
+                    <td>
+                      {l.nome_empresa ?? '—'}
+                      {l.contato && <div style={{ fontSize: '0.85em', color: 'var(--text)' }}>{l.contato}</div>}
+                    </td>
+                    <td>
+                      {l.telefone ? formatarTelefone(l.telefone) : '—'}
+                      {l.email && <div style={{ fontSize: '0.85em', color: 'var(--text)' }}>{l.email}</div>}
+                    </td>
+                    <td>{l.cidade ?? '—'}{l.uf ? `/${l.uf}` : ''}</td>
+                    <td>{l.origem ?? '—'}</td>
+                    <td>{l.vendedor_nome ?? '—'}</td>
+                    <td><span className={CLASSES_STATUS[l.status]}>{LABELS_STATUS[l.status]}</span></td>
+                    <td>{formatarData(l.criado_em)}</td>
+                    <td>
+                      <div className="acoes">
+                        <Link className="botao-link" to={`/leads/${l.id}`}>Ver</Link>
+                        {!l.vendedor_id && (
+                          <button className="botao-secundario" type="button" onClick={() => assumir(l)}>Assumir</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Paginacao
+              pagina={grid.pagina}
+              totalPaginas={grid.totalPaginas}
+              total={grid.total}
+              tamanho={grid.tamanho}
+              onIrPara={grid.irPara}
+              onMudarTamanho={grid.mudarTamanho}
+            />
+          </>
         )}
       </div>
     </section>

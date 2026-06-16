@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useOrdenacao } from '../../hooks/useOrdenacao'
+import { useGrid } from '../../hooks/useGrid'
+import { Paginacao } from '../../components/Paginacao'
+import { formatarMoeda } from '../../utils/formatar'
 import type { Proposta, StatusProposta } from './types'
 
 const LABELS_STATUS: Record<StatusProposta, string> = {
@@ -17,10 +19,6 @@ const CLASSES_STATUS: Record<StatusProposta, string> = {
   convertida: 'badge badge-convertida',
 }
 
-function formatarValor(valor: string) {
-  return Number(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
 function formatarData(data: string) {
   return new Date(data + 'T00:00:00').toLocaleDateString('pt-BR')
 }
@@ -32,7 +30,7 @@ export function ListaPropostas() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const { ordenados, props: th } = useOrdenacao(propostas, 'data')
+  const grid = useGrid(propostas, 'data')
 
   function carregar() {
     setCarregando(true)
@@ -42,7 +40,7 @@ export function ListaPropostas() {
     if (busca.trim()) params.set('q', busca.trim())
     fetch(`/api/propostas?${params}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then((d) => setPropostas(d.propostas))
+      .then((d) => { setPropostas(d.propostas); grid.resetar() })
       .catch(() => setErro('Não foi possível carregar as propostas.'))
       .finally(() => setCarregando(false))
   }
@@ -83,40 +81,50 @@ export function ListaPropostas() {
         {carregando && <p className="estado-vazio">Carregando...</p>}
         {!carregando && propostas.length === 0 && <p className="estado-vazio">Nenhuma proposta encontrada.</p>}
         {!carregando && propostas.length > 0 && (
-          <table className="tabela">
-            <thead>
-              <tr>
-                <th {...th('id')}>#</th>
-                <th {...th('cliente_nome')}>Cliente</th>
-                <th {...th('vendedor_nome')}>Vendedor</th>
-                <th {...th('data')}>Data</th>
-                <th {...th('validade')}>Validade</th>
-                <th {...th('total')}>Total</th>
-                <th {...th('status')}>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordenados.map((p) => (
-                <tr key={p.id}>
-                  <td>{p.id}</td>
-                  <td>{p.cliente_nome}</td>
-                  <td>{p.vendedor_nome}</td>
-                  <td>{formatarData(p.data)}</td>
-                  <td>{p.validade ? formatarData(p.validade) : '—'}</td>
-                  <td>{formatarValor(p.total)}</td>
-                  <td><span className={CLASSES_STATUS[p.status]}>{LABELS_STATUS[p.status]}</span></td>
-                  <td>
-                    <div className="acoes">
-                      <Link className="botao-link" to={`/propostas/${p.id}`}>
-                        {p.status === 'aberta' ? 'Editar' : 'Ver'}
-                      </Link>
-                    </div>
-                  </td>
+          <>
+            <table className="tabela">
+              <thead>
+                <tr>
+                  <th {...grid.th('id')}>#</th>
+                  <th {...grid.th('cliente_nome')}>Cliente</th>
+                  <th {...grid.th('vendedor_nome')}>Vendedor</th>
+                  <th {...grid.th('data')}>Data</th>
+                  <th {...grid.th('validade')}>Validade</th>
+                  <th {...grid.th('total')}>Total</th>
+                  <th {...grid.th('status')}>Status</th>
+                  <th>Ações</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {grid.pagina_atual.map((p) => (
+                  <tr key={p.id}>
+                    <td>{p.id}</td>
+                    <td>{p.cliente_nome}</td>
+                    <td>{p.vendedor_nome}</td>
+                    <td>{formatarData(p.data)}</td>
+                    <td>{p.validade ? formatarData(p.validade) : '—'}</td>
+                    <td>{formatarMoeda(p.total)}</td>
+                    <td><span className={CLASSES_STATUS[p.status]}>{LABELS_STATUS[p.status]}</span></td>
+                    <td>
+                      <div className="acoes">
+                        <Link className="botao-link" to={`/propostas/${p.id}`}>
+                          {p.status === 'aberta' ? 'Editar' : 'Ver'}
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Paginacao
+              pagina={grid.pagina}
+              totalPaginas={grid.totalPaginas}
+              total={grid.total}
+              tamanho={grid.tamanho}
+              onIrPara={grid.irPara}
+              onMudarTamanho={grid.mudarTamanho}
+            />
+          </>
         )}
       </div>
     </section>
