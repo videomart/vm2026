@@ -9,9 +9,10 @@ type SetupData = {
   empresa_site: string
   fator_markup_usd: string
   proposta_validade_dias: string
+  observacoes_padrao: string
 }
 
-type Condicao = { id: number; descricao: string }
+type Condicao = { id: number; descricao: string; corpo: string | null }
 type Cotacao = { id: number; data: string; valor: string; fonte: string | null } | null
 
 const SETUP_VAZIO: SetupData = {
@@ -23,6 +24,7 @@ const SETUP_VAZIO: SetupData = {
   empresa_site: '',
   fator_markup_usd: '1.3',
   proposta_validade_dias: '30',
+  observacoes_padrao: '',
 }
 
 function paraForm(s: any): SetupData {
@@ -35,14 +37,19 @@ function paraForm(s: any): SetupData {
     empresa_site: s.empresa_site ?? '',
     fator_markup_usd: String(s.fator_markup_usd ?? '1.3'),
     proposta_validade_dias: String(s.proposta_validade_dias ?? '30'),
+    observacoes_padrao: s.observacoes_padrao ?? '',
   }
 }
+
+const H3: React.CSSProperties = { marginBottom: '12px', marginTop: '28px', fontSize: '15px', color: 'var(--text-h)', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }
 
 export function Setup() {
   const [campos, setCampos] = useState<SetupData>(SETUP_VAZIO)
   const [condicoes, setCondicoes] = useState<Condicao[]>([])
   const [cotacao, setCotacao] = useState<Cotacao>(null)
-  const [novaCondicao, setNovaCondicao] = useState('')
+  const [novaNome, setNovaNome] = useState('')
+  const [novaCorpo, setNovaCorpo] = useState('')
+  const [editandoId, setEditandoId] = useState<number | null>(null)
   const [novaCotacaoData, setNovaCotacaoData] = useState(new Date().toISOString().slice(0, 10))
   const [novaCotacaoValor, setNovaCotacaoValor] = useState('')
   const [carregando, setCarregando] = useState(true)
@@ -100,27 +107,50 @@ export function Setup() {
     }
   }
 
-  async function adicionarCondicao() {
-    if (!novaCondicao.trim()) return
-    const res = await fetch('/api/setup/condicoes', {
-      method: 'POST',
+  async function salvarCondicao() {
+    if (!novaNome.trim()) return
+    const isEdicao = editandoId !== null
+    const url = isEdicao ? `/api/setup/condicoes/${editandoId}` : '/api/setup/condicoes'
+    const method = isEdicao ? 'PUT' : 'POST'
+    const res = await fetch(url, {
+      method, credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ descricao: novaCondicao.trim() }),
+      body: JSON.stringify({ descricao: novaNome.trim(), corpo: novaCorpo.trim() || null }),
     })
     const d = await res.json()
     if (res.ok) {
-      setCondicoes((c) => [...c, d.condicao].sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')))
-      setNovaCondicao('')
+      if (isEdicao) {
+        setCondicoes((prev) =>
+          prev.map((c) => c.id === editandoId ? { ...c, descricao: novaNome.trim(), corpo: novaCorpo.trim() || null } : c)
+        )
+      } else {
+        setCondicoes((prev) => [...prev, d.condicao].sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')))
+      }
+      setNovaNome('')
+      setNovaCorpo('')
+      setEditandoId(null)
     } else {
-      setErro(d.erro ?? 'Erro ao adicionar condição.')
+      setErro(d.erro ?? 'Erro ao salvar condição.')
     }
+  }
+
+  function editarCondicao(c: Condicao) {
+    setEditandoId(c.id)
+    setNovaNome(c.descricao)
+    setNovaCorpo(c.corpo ?? '')
+  }
+
+  function cancelarEdicao() {
+    setEditandoId(null)
+    setNovaNome('')
+    setNovaCorpo('')
   }
 
   async function removerCondicao(id: number) {
     if (!confirm('Remover esta condição?')) return
     await fetch(`/api/setup/condicoes/${id}`, { method: 'DELETE', credentials: 'include' })
     setCondicoes((c) => c.filter((x) => x.id !== id))
+    if (editandoId === id) cancelarEdicao()
   }
 
   async function salvarCotacao(e: React.FormEvent) {
@@ -152,7 +182,7 @@ export function Setup() {
 
       {/* ── Dados da empresa ── */}
       <form onSubmit={salvarSetup}>
-        <h3 style={{ marginBottom: '12px', marginTop: '24px', fontSize: '15px', color: 'var(--text-h)' }}>Dados da empresa</h3>
+        <h3 style={H3}>Dados da empresa</h3>
         <div className="grade-formulario">
           <div className="campo campo-largo">
             <label>Razão social</label>
@@ -180,30 +210,35 @@ export function Setup() {
           </div>
         </div>
 
-        <h3 style={{ marginBottom: '12px', marginTop: '24px', fontSize: '15px', color: 'var(--text-h)' }}>Propostas</h3>
+        <h3 style={H3}>Propostas</h3>
         <div className="grade-formulario">
           <div className="campo">
             <label>Validade padrão (dias)</label>
-            <input
-              type="number" min="0" step="1"
-              value={campos.proposta_validade_dias}
-              onChange={(e) => atualizar('proposta_validade_dias', e.target.value)}
+            <input type="number" min="0" step="1" value={campos.proposta_validade_dias} onChange={(e) => atualizar('proposta_validade_dias', e.target.value)} />
+          </div>
+        </div>
+        <div className="grade-formulario">
+          <div className="campo campo-largo">
+            <label>Observações padrão das propostas</label>
+            <textarea
+              rows={5}
+              value={campos.observacoes_padrao}
+              onChange={(e) => atualizar('observacoes_padrao', e.target.value)}
+              placeholder={'O prazo de entrega está sujeito a alterações em caso de greve...\nA empresa não se responsabiliza por danos causados pela transportadora.'}
             />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              Preenchido automaticamente no campo Observações de novas propostas.
+            </span>
           </div>
         </div>
 
-        <h3 style={{ marginBottom: '12px', marginTop: '24px', fontSize: '15px', color: 'var(--text-h)' }}>Precificação em dólar</h3>
+        <h3 style={H3}>Precificação em dólar</h3>
         <div className="grade-formulario">
           <div className="campo">
             <label>Fator de markup sobre preço USD</label>
-            <input
-              type="number" min="1" step="0.01"
-              value={campos.fator_markup_usd}
-              onChange={(e) => atualizar('fator_markup_usd', e.target.value)}
-            />
+            <input type="number" min="1" step="0.01" value={campos.fator_markup_usd} onChange={(e) => atualizar('fator_markup_usd', e.target.value)} />
             <span style={{ fontSize: '12px', color: 'var(--text)' }}>
-              Preço sugerido = preço USD × cotação do dia × fator.
-              Ex.: 1,30 = 30% de margem sobre o custo convertido.
+              Preço sugerido = preço USD × cotação do dia × fator. Ex.: 1,30 = 30% de margem.
             </span>
           </div>
         </div>
@@ -216,7 +251,7 @@ export function Setup() {
       </form>
 
       {/* ── Cotação do dólar ── */}
-      <h3 style={{ marginBottom: '12px', marginTop: '32px', fontSize: '15px', color: 'var(--text-h)' }}>Cotação do dólar</h3>
+      <h3 style={H3}>Cotação do dólar</h3>
       {cotacao ? (
         <p style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--text)' }}>
           Última cotação: <strong style={{ color: 'var(--text-h)' }}>
@@ -234,46 +269,72 @@ export function Setup() {
         </div>
         <div className="campo" style={{ margin: 0 }}>
           <label>Valor (R$)</label>
-          <input
-            type="number" min="0.01" step="0.0001"
-            placeholder="5.7500"
-            value={novaCotacaoValor}
-            onChange={(e) => setNovaCotacaoValor(e.target.value)}
-            required
-          />
+          <input type="number" min="0.01" step="0.0001" placeholder="5.7500" value={novaCotacaoValor} onChange={(e) => setNovaCotacaoValor(e.target.value)} required />
         </div>
         <button className="botao" type="submit">Salvar cotação</button>
       </form>
 
       {/* ── Condições de pagamento ── */}
-      <h3 style={{ marginBottom: '12px', marginTop: '32px', fontSize: '15px', color: 'var(--text-h)' }}>Condições de pagamento</h3>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
-        <input
-          style={{ flex: 1, minWidth: '220px' }}
-          placeholder="Nova condição (ex.: 30/60/90 dias)"
-          value={novaCondicao}
-          onChange={(e) => setNovaCondicao(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarCondicao() } }}
-        />
-        <button className="botao-secundario" type="button" onClick={adicionarCondicao}>Adicionar</button>
+      <h3 style={H3}>Condições de pagamento</h3>
+      <p style={{ fontSize: '12px', color: 'var(--text)', marginBottom: '12px' }}>
+        O campo "Corpo" é preenchido automaticamente no campo Condições da proposta ao selecionar esta opção.
+      </p>
+
+      {/* Formulário de adição/edição */}
+      <div style={{ background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px 16px', marginBottom: '16px' }}>
+        <div className="grade-formulario">
+          <div className="campo">
+            <label>Nome da condição (label do select)</label>
+            <input
+              placeholder="Ex.: 50% na aprovação + 50% na entrega"
+              value={novaNome}
+              onChange={(e) => setNovaNome(e.target.value)}
+            />
+          </div>
+        </div>
+        <div className="campo">
+          <label>Corpo (texto completo da proposta)</label>
+          <textarea
+            rows={7}
+            placeholder={'Prazo de entrega: 30 dias úteis\nPeríodo de garantia: 01 ANO\nCondições de pagamento: 50% na aprovação + 50% na entrega\nForma de pagamento: Depósito bancário\nValidade da proposta: 3 dias\nFrete: Não incluso\nPreço fornecido em REAL'}
+            value={novaCorpo}
+            onChange={(e) => setNovaCorpo(e.target.value)}
+          />
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button className="botao-secundario" type="button" onClick={salvarCondicao}>
+            {editandoId ? 'Salvar alterações' : 'Adicionar condição'}
+          </button>
+          {editandoId && (
+            <button className="botao-secundario" type="button" onClick={cancelarEdicao}>Cancelar</button>
+          )}
+        </div>
       </div>
+
       <div className="tabela-wrapper">
         <table className="tabela">
           <thead>
             <tr>
-              <th>Descrição</th>
-              <th style={{ width: '80px' }}></th>
+              <th>Nome</th>
+              <th>Corpo (prévia)</th>
+              <th style={{ width: '130px' }}></th>
             </tr>
           </thead>
           <tbody>
             {condicoes.length === 0 && (
-              <tr><td colSpan={2} style={{ textAlign: 'center', color: 'var(--text)' }}>Nenhuma condição cadastrada.</td></tr>
+              <tr><td colSpan={3} style={{ textAlign: 'center', color: 'var(--text)' }}>Nenhuma condição cadastrada.</td></tr>
             )}
             {condicoes.map((c) => (
-              <tr key={c.id}>
-                <td>{c.descricao}</td>
+              <tr key={c.id} style={editandoId === c.id ? { background: 'var(--bg-alt)' } : {}}>
+                <td style={{ verticalAlign: 'top' }}>{c.descricao}</td>
+                <td style={{ verticalAlign: 'top', fontSize: '12px', color: 'var(--text)', whiteSpace: 'pre-wrap', maxWidth: '400px' }}>
+                  {c.corpo ? c.corpo.slice(0, 120) + (c.corpo.length > 120 ? '…' : '') : <em style={{ opacity: 0.5 }}>sem corpo</em>}
+                </td>
                 <td>
-                  <button className="botao-perigo" type="button" onClick={() => removerCondicao(c.id)}>Remover</button>
+                  <div className="acoes">
+                    <button className="botao-link" type="button" onClick={() => editarCondicao(c)}>Editar</button>
+                    <button className="botao-perigo" type="button" onClick={() => removerCondicao(c.id)}>Remover</button>
+                  </div>
                 </td>
               </tr>
             ))}

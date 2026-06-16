@@ -21,13 +21,13 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
     const {
       empresa_nome, empresa_cnpj, empresa_endereco,
       empresa_telefone, empresa_email, empresa_site,
-      fator_markup_usd, proposta_validade_dias,
+      fator_markup_usd, proposta_validade_dias, observacoes_padrao,
     } = req.body
     await pool.query(
       `UPDATE setup SET
          empresa_nome = ?, empresa_cnpj = ?, empresa_endereco = ?,
          empresa_telefone = ?, empresa_email = ?, empresa_site = ?,
-         fator_markup_usd = ?, proposta_validade_dias = ?
+         fator_markup_usd = ?, proposta_validade_dias = ?, observacoes_padrao = ?
        WHERE id = 1`,
       [
         empresa_nome ?? 'Videomart Broadcast',
@@ -38,6 +38,7 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
         empresa_site ?? null,
         Number(fator_markup_usd) || 1.3,
         Number(proposta_validade_dias) || 30,
+        observacoes_padrao ?? null,
       ],
     )
     const [rows] = await pool.query('SELECT * FROM setup WHERE id = 1')
@@ -52,7 +53,7 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
 setupRouter.get('/condicoes', requireAuth, async (_req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT id, descricao FROM condicoes_pagamento WHERE ativo = 1 ORDER BY descricao ASC',
+      'SELECT id, descricao, corpo FROM condicoes_pagamento WHERE ativo = 1 ORDER BY descricao ASC',
     )
     res.json({ condicoes: rows })
   } catch {
@@ -62,13 +63,28 @@ setupRouter.get('/condicoes', requireAuth, async (_req, res) => {
 
 setupRouter.post('/condicoes', requireAuth, requireAdmin, async (req, res) => {
   try {
-    const { descricao } = req.body
+    const { descricao, corpo } = req.body
     if (!descricao?.trim()) return res.status(400).json({ erro: 'Descrição é obrigatória.' })
     const [r] = await pool.query(
-      'INSERT INTO condicoes_pagamento (descricao) VALUES (?)',
-      [descricao.trim()],
+      'INSERT INTO condicoes_pagamento (descricao, corpo) VALUES (?, ?)',
+      [descricao.trim(), corpo?.trim() ?? null],
     ) as any[]
-    res.status(201).json({ condicao: { id: r.insertId, descricao: descricao.trim() } })
+    res.status(201).json({ condicao: { id: r.insertId, descricao: descricao.trim(), corpo: corpo?.trim() ?? null } })
+  } catch (err: any) {
+    if (err?.code === 'ER_DUP_ENTRY') return res.status(409).json({ erro: 'Condição já cadastrada.' })
+    res.status(500).json({ erro: 'Erro ao salvar condição.' })
+  }
+})
+
+setupRouter.put('/condicoes/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { descricao, corpo } = req.body
+    if (!descricao?.trim()) return res.status(400).json({ erro: 'Descrição é obrigatória.' })
+    await pool.query(
+      'UPDATE condicoes_pagamento SET descricao = ?, corpo = ? WHERE id = ?',
+      [descricao.trim(), corpo?.trim() ?? null, req.params.id],
+    )
+    res.json({ ok: true })
   } catch (err: any) {
     if (err?.code === 'ER_DUP_ENTRY') return res.status(409).json({ erro: 'Condição já cadastrada.' })
     res.status(500).json({ erro: 'Erro ao salvar condição.' })
@@ -88,12 +104,10 @@ setupRouter.delete('/condicoes/:id', requireAuth, requireAdmin, async (req, res)
 
 setupRouter.get('/cotacao', requireAuth, async (_req, res) => {
   try {
-    // Retorna a cotação mais recente
     const [rows] = await pool.query(
       'SELECT * FROM cotacao_dolar ORDER BY data DESC LIMIT 1',
     )
     const hoje = (rows as any[])[0] ?? null
-    // Também retorna os últimos 30 dias para gráfico futuro
     const [historico] = await pool.query(
       'SELECT data, valor FROM cotacao_dolar ORDER BY data DESC LIMIT 30',
     )

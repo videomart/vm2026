@@ -3,6 +3,15 @@ import { useParams } from 'react-router-dom'
 import { formatarData } from '../../utils/formatar'
 import type { Proposta } from './types'
 
+type Empresa = {
+  empresa_nome: string
+  empresa_cnpj: string | null
+  empresa_endereco: string | null
+  empresa_telefone: string | null
+  empresa_email: string | null
+  empresa_site: string | null
+}
+
 function fmt(v: number | string) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -12,12 +21,22 @@ const fmtData = formatarData
 export function ImpressaoProposta() {
   const { id } = useParams()
   const [proposta, setProposta] = useState<Proposta | null>(null)
+  const [empresa, setEmpresa] = useState<Empresa | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/propostas/${id}`, { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
-      .then((d) => setProposta(d.proposta))
+    Promise.all([
+      fetch(`/api/propostas/${id}`, { credentials: 'include' }),
+      fetch('/api/setup', { credentials: 'include' }),
+    ])
+      .then(([rp, rs]) => {
+        if (!rp.ok) return Promise.reject(rp.status)
+        return Promise.all([rp.json(), rs.ok ? rs.json() : Promise.resolve(null)])
+      })
+      .then(([dp, ds]) => {
+        setProposta(dp.proposta)
+        if (ds?.setup) setEmpresa(ds.setup)
+      })
       .catch((e) => setErro(e === 401 ? 'Sessão expirada. Faça login novamente.' : 'Proposta não encontrada.'))
   }, [id])
 
@@ -48,10 +67,12 @@ export function ImpressaoProposta() {
         {/* Cabeçalho */}
         <div className="impressao-cabecalho">
           <div className="impressao-empresa">
-            <strong>Videomart Broadcast Comércio de Equipamentos Ltda</strong>
-            <span>CNPJ: 01.137.842/0001-70</span>
-            <span>Rua Vergueiro, 3185 — São Paulo, SP — 04101-300</span>
-            <span>videomart.com.br</span>
+            <strong>{empresa?.empresa_nome ?? 'Videomart Broadcast'}</strong>
+            {empresa?.empresa_cnpj && <span>CNPJ: {empresa.empresa_cnpj}</span>}
+            {empresa?.empresa_endereco && <span>{empresa.empresa_endereco}</span>}
+            {empresa?.empresa_telefone && <span>Tel: {empresa.empresa_telefone}</span>}
+            {empresa?.empresa_email && <span>{empresa.empresa_email}</span>}
+            {empresa?.empresa_site && <span>{empresa.empresa_site}</span>}
           </div>
           <div className="impressao-titulo-bloco">
             <div className="impressao-titulo">PROPOSTA COMERCIAL</div>
@@ -163,7 +184,7 @@ export function ImpressaoProposta() {
             {proposta.condicoes_pagamento && (
               <div className="impressao-rodape-item">
                 <strong>Condições de pagamento:</strong>
-                <span>{proposta.condicoes_pagamento}</span>
+                <span style={{ whiteSpace: 'pre-wrap' }}>{proposta.condicoes_pagamento}</span>
               </div>
             )}
             {proposta.observacoes && (

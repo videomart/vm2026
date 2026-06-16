@@ -56,7 +56,7 @@ export function FormularioProposta() {
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioSimples[]>([])
   const [usuarioAtual, setUsuarioAtual] = useState<UsuarioSimples | null>(null)
-  const [listaCondicoes, setListaCondicoes] = useState<string[]>([])
+  const [listaCondicoes, setListaCondicoes] = useState<{ id: number; descricao: string; corpo: string | null }[]>([])
   const [validadeDias, setValidadeDias] = useState(30)
 
   // proposta carregada (para edição / visualização)
@@ -114,17 +114,21 @@ export function FormularioProposta() {
         setClientes(clientesData.clientes ?? [])
         setProdutos(produtosData.produtos ?? [])
         setUsuarios(usuariosData.usuarios ?? [])
-        setListaCondicoes((condicoesData.condicoes ?? []).map((c: { descricao: string }) => c.descricao))
+        setListaCondicoes(condicoesData.condicoes ?? [])
 
         if (me.usuario) {
           setVendedorId(String(me.usuario.id))
         }
 
-        // validade padrão para nova proposta
-        if (!editando && dias > 0) {
-          const v = new Date()
-          v.setDate(v.getDate() + dias)
-          setValidade(v.toISOString().slice(0, 10))
+        // validade e observações padrão para nova proposta
+        if (!editando) {
+          if (dias > 0) {
+            const v = new Date()
+            v.setDate(v.getDate() + dias)
+            setValidade(v.toISOString().slice(0, 10))
+          }
+          const obsPadrao = setupData?.setup?.observacoes_padrao ?? ''
+          if (obsPadrao) setObservacoes(obsPadrao)
         }
 
         if (editando && id) {
@@ -207,7 +211,9 @@ export function FormularioProposta() {
     setClienteId(novoClienteId)
     const cliente = clientes.find((c) => String(c.id) === novoClienteId)
     if (cliente?.condicoes_pagamento) {
-      setCondicoes(cliente.condicoes_pagamento)
+      // tenta encontrar o corpo da condição cadastrada que casa com a do cliente
+      const cond = listaCondicoes.find((c) => c.descricao === cliente.condicoes_pagamento)
+      setCondicoes(cond?.corpo ?? cliente.condicoes_pagamento)
     }
   }
 
@@ -379,33 +385,35 @@ export function FormularioProposta() {
           <div className="campo campo-largo" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <div className="campo" style={{ marginBottom: 0 }}>
               <label htmlFor="condicoes">Condições de pagamento</label>
-              <select
-                id="condicoes-select"
-                value={listaCondicoes.includes(condicoes) ? condicoes : '__outro__'}
-                onChange={(e) => {
-                  if (e.target.value !== '__outro__') setCondicoes(e.target.value)
-                }}
-                disabled={somenteLeitura}
-                style={{ marginBottom: '4px' }}
-              >
-                <option value="">— Selecione —</option>
-                {listaCondicoes.map((c) => <option key={c} value={c}>{c}</option>)}
-                <option value="__outro__">Outro / texto livre</option>
-              </select>
+              {!somenteLeitura && (
+                <select
+                  id="condicoes-select"
+                  value=""
+                  onChange={(e) => {
+                    const cond = listaCondicoes.find((c) => String(c.id) === e.target.value)
+                    if (cond?.corpo) setCondicoes(cond.corpo)
+                    else if (cond) setCondicoes(cond.descricao)
+                  }}
+                  style={{ marginBottom: '4px' }}
+                >
+                  <option value="">— Selecionar modelo —</option>
+                  {listaCondicoes.map((c) => <option key={c.id} value={c.id}>{c.descricao}</option>)}
+                </select>
+              )}
               <textarea
                 id="condicoes"
-                rows={4}
+                rows={6}
                 value={condicoes}
                 onChange={(e) => setCondicoes(e.target.value)}
                 disabled={somenteLeitura}
-                placeholder="Texto livre ou edite a seleção acima"
+                placeholder="Selecione um modelo acima ou escreva livremente"
               />
             </div>
             <div className="campo" style={{ marginBottom: 0 }}>
               <label htmlFor="observacoes">Observações</label>
               <textarea
                 id="observacoes"
-                rows={6}
+                rows={somenteLeitura ? 6 : 7}
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
                 disabled={somenteLeitura}
