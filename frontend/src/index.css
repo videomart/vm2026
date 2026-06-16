@@ -1,22 +1,24 @@
 :root {
-  --text: #4b4555;
-  --text-h: #08060d;
-  --bg: #fff;
-  --bg-suave: #f7f6f9;
-  --border: #e2e1e6;
-  --accent: #6d28d9;
-  --accent-hover: #5b21b6;
-  --accent-bg: rgba(109, 40, 217, 0.08);
-  --perigo: #b42318;
-  --perigo-bg: rgba(180, 35, 24, 0.08);
-  --sucesso: #1a7f4f;
-  --sucesso-bg: rgba(26, 127, 79, 0.1);
-  --shadow: rgba(16, 14, 24, 0.08) 0 4px 16px -4px;
+  --text: #64748b;
+  --text-h: #0f172a;
+  --bg: #ffffff;
+  --bg-suave: #f8fafc;
+  --bg-elevado: #f1f5f9;
+  --border: #e2e8f0;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-bg: rgba(59, 130, 246, 0.1);
+  --perigo: #ef4444;
+  --perigo-bg: rgba(239, 68, 68, 0.08);
+  --sucesso: #10b981;
+  --sucesso-bg: rgba(16, 185, 129, 0.08);
+  --shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 4px 16px -4px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 24px -4px rgba(15, 23, 42, 0.14);
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
   --raio: 8px;
 
-  font: 16px/1.5 var(--sans);
+  font: 15px/1.6 var(--sans);
   color-scheme: light dark;
   color: var(--text);
   background: var(--bg-suave);
@@ -28,19 +30,21 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #c7c4cf;
-    --text-h: #f3f2f6;
-    --bg: #1c1a22;
-    --bg-suave: #141319;
-    --border: #34313d;
-    --accent: #a78bfa;
-    --accent-hover: #c4b5fd;
-    --accent-bg: rgba(167, 139, 250, 0.15);
-    --perigo: #f08a82;
-    --perigo-bg: rgba(240, 138, 130, 0.12);
-    --sucesso: #5fcb9b;
-    --sucesso-bg: rgba(95, 203, 155, 0.12);
-    --shadow: rgba(0, 0, 0, 0.4) 0 4px 16px -4px;
+    --text: #8892a4;
+    --text-h: #e2e8f0;
+    --bg: #1a2236;
+    --bg-suave: #0f1117;
+    --bg-elevado: #222b40;
+    --border: rgba(255, 255, 255, 0.08);
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --accent-bg: rgba(96, 165, 250, 0.12);
+    --perigo: #f87171;
+    --perigo-bg: rgba(248, 113, 113, 0.1);
+    --sucesso: #34d399;
+    --sucesso-bg: rgba(52, 211, 153, 0.1);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.25), 0 4px 20px -4px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 4px 24px rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -84,9 +88,10 @@ a {
 }
 
 label {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--text-h);
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 input,
@@ -98,13 +103,15 @@ textarea {
   border: 1px solid var(--border);
   border-radius: var(--raio);
   padding: 8px 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  outline: 2px solid var(--accent-bg);
+  outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 textarea {
