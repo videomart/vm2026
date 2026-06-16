@@ -60,7 +60,8 @@ export function FormularioProduto() {
 
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
   const [precoSugerido, setPrecoSugerido] = useState<number | null>(null)
-  // setup para cálculo local do preço de venda sugerido
+  const [listaMarcas, setListaMarcas] = useState<string[]>([])
+  const [listaCategorias, setListaCategorias] = useState<string[]>([])
   const setupRef = useRef<{ fator: number; cotacao: number | null }>({ fator: 1.3, cotacao: null })
   const descricaoEditada = useRef(false)
 
@@ -69,14 +70,18 @@ export function FormularioProduto() {
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
-    // Carrega setup e cotação para cálculo local
     Promise.all([
       fetch('/api/setup', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       fetch('/api/setup/cotacao', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-    ]).then(([ds, dco]) => {
-      const fator = Number(ds?.setup?.fator_markup_usd ?? 1.3)
-      const cotacao = dco?.cotacao?.valor ? Number(dco.cotacao.valor) : null
-      setupRef.current = { fator, cotacao }
+      fetch('/api/marcas', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+      fetch('/api/categorias', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+    ]).then(([ds, dco, dm, dc]) => {
+      setupRef.current = {
+        fator: Number(ds?.setup?.fator_markup_usd ?? 1.3),
+        cotacao: dco?.cotacao?.valor ? Number(dco.cotacao.valor) : null,
+      }
+      setListaMarcas((dm?.marcas ?? []).map((m: { nome: string }) => m.nome))
+      setListaCategorias((dc?.categorias ?? []).map((c: { nome: string }) => c.nome))
     })
 
     if (!editando) return
@@ -84,7 +89,7 @@ export function FormularioProduto() {
     fetch(`/api/produtos/${id}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => {
-        descricaoEditada.current = true // em edição não sobrescreve a descrição
+        descricaoEditada.current = true
         setCampos(paraFormulario(data.produto))
         setPrecoSugerido(data.produto.preco_sugerido ?? null)
       })
@@ -108,24 +113,23 @@ export function FormularioProduto() {
     setCampos((prev) => {
       const novo = { ...prev, [campo]: valor }
 
-      // auto-descrição: só enquanto o usuário não editou manualmente
       if (!descricaoEditada.current && campo !== 'descricao') {
         novo.descricao = gerarDescricao(novo)
       }
 
-      // sugestão de preço de venda ao alterar custo/usd/moeda
       if (['preco_custo', 'preco_usd', 'moeda'].includes(campo)) {
         novo.preco_venda = calcularVenda(novo)
-        if (campo === 'moeda' && valor === 'BRL') setPrecoSugerido(null)
-        if (campo === 'moeda' && valor === 'USD') {
-          // recalcula sugerido a partir do preco_usd atual
-          const { cotacao, fator } = setupRef.current
-          const usd = Number(novo.preco_usd)
-          setPrecoSugerido(usd && cotacao ? Math.round(usd * cotacao * fator * 100) / 100 : null)
+        if (campo === 'moeda' && valor === 'BRL') {
+          setPrecoSugerido(null)
         }
         if (campo === 'preco_usd' && prev.moeda === 'USD') {
           const { cotacao, fator } = setupRef.current
           const usd = Number(valor)
+          setPrecoSugerido(usd && cotacao ? Math.round(usd * cotacao * fator * 100) / 100 : null)
+        }
+        if (campo === 'moeda' && valor === 'USD') {
+          const { cotacao, fator } = setupRef.current
+          const usd = Number(novo.preco_usd)
           setPrecoSugerido(usd && cotacao ? Math.round(usd * cotacao * fator * 100) / 100 : null)
         }
       }
@@ -156,6 +160,23 @@ export function FormularioProduto() {
       })
       const data = await res.json()
       if (!res.ok) { setErro(data.erro ?? 'Não foi possível salvar o produto.'); return }
+
+      // se marca ou categoria nova, adiciona nas tabelas para aparecer no autocomplete futuro
+      if (campos.marca) {
+        fetch('/api/marcas', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome: campos.marca }),
+        }).catch(() => null)
+      }
+      if (campos.categoria) {
+        fetch('/api/categorias', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome: campos.categoria }),
+        }).catch(() => null)
+      }
+
       navigate('/produtos')
     } catch {
       setErro('Erro de conexão com o servidor.')
@@ -183,10 +204,10 @@ export function FormularioProduto() {
       )}
       <h2>{editando ? 'Editar produto' : 'Novo produto'}</h2>
       <form onSubmit={handleSubmit}>
-        <div className="grade-formulario">
+        <div className="grade-formulario grade-4col">
 
-          {/* Linha 1: Modelo (largo) */}
-          <div className="campo campo-largo">
+          {/* Linha 1: Modelo | Categoria | Marca | Peso — todos na mesma linha */}
+          <div className="campo">
             <label htmlFor="modelo">Modelo *</label>
             <input
               id="modelo"
@@ -195,23 +216,31 @@ export function FormularioProduto() {
               required
             />
           </div>
-
-          {/* Linha 2: Categoria, Marca, Peso */}
           <div className="campo">
             <label htmlFor="categoria">Categoria</label>
             <input
               id="categoria"
+              list="lista-categorias"
               value={campos.categoria}
               onChange={(e) => atualizar('categoria', e.target.value)}
+              autoComplete="off"
             />
+            <datalist id="lista-categorias">
+              {listaCategorias.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </div>
           <div className="campo">
             <label htmlFor="marca">Marca</label>
             <input
               id="marca"
+              list="lista-marcas"
               value={campos.marca}
               onChange={(e) => atualizar('marca', e.target.value)}
+              autoComplete="off"
             />
+            <datalist id="lista-marcas">
+              {listaMarcas.map((m) => <option key={m} value={m} />)}
+            </datalist>
           </div>
           <div className="campo">
             <label htmlFor="peso">Peso (kg)</label>
@@ -225,7 +254,7 @@ export function FormularioProduto() {
             />
           </div>
 
-          {/* Linha 3: Descrição (largo) */}
+          {/* Linha 2: Descrição (largo) */}
           <div className="campo campo-largo">
             <label htmlFor="descricao">Descrição</label>
             <input
@@ -235,7 +264,7 @@ export function FormularioProduto() {
             />
           </div>
 
-          {/* Linha 4: Moeda */}
+          {/* Linha 3: Moeda | Preço de compra | (USD) | Preço de venda */}
           <div className="campo">
             <label htmlFor="moeda">Moeda</label>
             <select
@@ -247,12 +276,8 @@ export function FormularioProduto() {
               <option value="USD">Dólar (USD)</option>
             </select>
           </div>
-
-          {/* Linha 5: Preços */}
           <div className="campo">
-            <label htmlFor="preco_custo">
-              {campos.moeda === 'USD' ? 'Preço de compra (R$)' : 'Preço de compra (R$)'}
-            </label>
+            <label htmlFor="preco_custo">Preço de compra (R$)</label>
             <input
               id="preco_custo"
               type="number"
@@ -262,7 +287,6 @@ export function FormularioProduto() {
               onChange={(e) => atualizar('preco_custo', e.target.value)}
             />
           </div>
-
           {campos.moeda === 'USD' && (
             <div className="campo">
               <label htmlFor="preco_usd">Preço de compra (US$)</label>
@@ -276,16 +300,8 @@ export function FormularioProduto() {
               />
             </div>
           )}
-
           <div className="campo">
-            <label htmlFor="preco_venda">
-              Preço de venda (R$)
-              {campos.moeda === 'USD' && setupRef.current.cotacao
-                ? ` — sugerido via US$ × cotação × fator`
-                : campos.preco_custo
-                ? ` — sugerido via custo × fator`
-                : ''}
-            </label>
+            <label htmlFor="preco_venda">Preço de venda (R$)</label>
             <input
               id="preco_venda"
               type="number"
@@ -296,7 +312,7 @@ export function FormularioProduto() {
             />
             {campos.moeda === 'USD' && precoSugerido !== null && (
               <span style={{ fontSize: '12px', color: 'var(--text)' }}>
-                Calculado: {formatarMoeda(precoSugerido)} (preço salvo pode diferir da sugestão acima)
+                Sugerido: {formatarMoeda(precoSugerido)}
               </span>
             )}
           </div>

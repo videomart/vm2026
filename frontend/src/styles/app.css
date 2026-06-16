@@ -391,6 +391,22 @@
   grid-column: 1 / -1;
 }
 
+.grade-formulario.grade-4col {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 900px) {
+  .grade-formulario.grade-4col {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 540px) {
+  .grade-formulario.grade-4col {
+    grid-template-columns: 1fr;
+  }
+}
+
 .barra-acoes-formulario {
   display: flex;
   gap: 8px;
