@@ -32,11 +32,11 @@ campanhasRouter.get('/grupos/:id', async (req, res) => {
     if (!grupo) return res.status(404).json({ erro: 'Grupo não encontrado.' })
 
     const [clientes] = await pool.query(`
-      SELECT c.id, c.nome, c.email
+      SELECT c.id, c.razao_social AS nome, c.email
       FROM grupo_clientes gc
       JOIN clientes c ON c.id = gc.cliente_id
       WHERE gc.grupo_id = ?
-      ORDER BY c.nome ASC
+      ORDER BY c.razao_social ASC
     `, [req.params.id])
 
     res.json({ grupo, clientes })
@@ -139,7 +139,7 @@ campanhasRouter.post('/', requireAdmin, async (req: any, res) => {
 
     // Busca clientes do grupo que têm e-mail
     const [clientes] = await pool.query(`
-      SELECT c.id, c.nome, c.email
+      SELECT c.id, c.razao_social AS nome, c.email
       FROM grupo_clientes gc
       JOIN clientes c ON c.id = gc.cliente_id
       WHERE gc.grupo_id = ? AND c.email IS NOT NULL AND c.email != '' AND c.ativo = 1
