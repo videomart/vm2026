@@ -95,13 +95,13 @@ export function ListaClientes() {
         {!carregando && clientes.length === 0 && <p className="estado-vazio">Nenhum cliente encontrado.</p>}
         {!carregando && clientes.length > 0 && (
           <>
-            <table className="tabela">
+            <table className="tabela" style={{ minWidth: '960px' }}>
               <thead>
                 <tr>
                   <th {...grid.th('razao_social')}>Razão social</th>
-                  <th {...grid.th('cnpj_cpf')}>CNPJ/CPF</th>
-                  <th {...grid.th('telefone')}>Telefone</th>
-                  <th {...grid.th('cidade')}>Cidade/UF</th>
+                  <th {...grid.th('cnpj_cpf')} style={{ whiteSpace: 'nowrap' }}>CNPJ/CPF</th>
+                  <th {...grid.th('telefone')} style={{ whiteSpace: 'nowrap' }}>Telefone</th>
+                  <th {...grid.th('cidade')} style={{ whiteSpace: 'nowrap' }}>Cidade/UF</th>
                   <th {...grid.th('categoria_cliente_nome')}>Categoria</th>
                   <th {...grid.th('criado_em')}>Cadastrado em</th>
                   <th {...grid.th('ativo')}>Status</th>
@@ -112,9 +112,9 @@ export function ListaClientes() {
                 {grid.pagina_atual.map((cliente) => (
                   <tr key={cliente.id}>
                     <td>{cliente.razao_social}</td>
-                    <td>{cliente.cnpj_cpf ? formatarCNPJCPF(cliente.cnpj_cpf) : '—'}</td>
-                    <td>{cliente.telefone ? formatarTelefone(cliente.telefone) : '—'}</td>
-                    <td>{cliente.cidade ?? '—'}{cliente.uf ? `/${cliente.uf}` : ''}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{cliente.cnpj_cpf ? formatarCNPJCPF(cliente.cnpj_cpf) : '—'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{cliente.telefone ? formatarTelefone(cliente.telefone) : '—'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{cliente.cidade ?? '—'}{cliente.uf ? `/${cliente.uf}` : ''}</td>
                     <td>{cliente.categoria_cliente_nome ?? '—'}</td>
                     <td>{formatarData(cliente.criado_em)}</td>
                     <td>
