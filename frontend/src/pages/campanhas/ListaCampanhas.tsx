@@ -30,6 +30,7 @@ export function ListaCampanhas() {
         <h2>E-mails episódicos</h2>
         <div style={{ display: 'flex', gap: '8px' }}>
           <Link to="/campanhas/grupos" className="botao-secundario">Gerenciar grupos</Link>
+          <Link to="/campanhas/templates" className="botao-secundario">Templates</Link>
           <Link to="/campanhas/nova" className="botao">Nova campanha</Link>
         </div>
       </div>

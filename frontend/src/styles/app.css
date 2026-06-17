@@ -1218,3 +1218,76 @@
 .modal-fechar:hover {
   color: var(--text-h);
 }
+
+/* ── Editor HTML (rich text para templates de e-mail) ─────────────────── */
+
+.editor-html {
+  border: 1px solid var(--border);
+  border-radius: var(--raio);
+  overflow: hidden;
+}
+
+.editor-html-barra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg-alt);
+  border-bottom: 1px solid var(--border);
+}
+
+.editor-html-botao {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-h);
+}
+
+.editor-html-botao:hover {
+  background: var(--bg);
+  border-color: var(--border);
+}
+
+.editor-html-botao.ativo {
+  background: var(--bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.editor-html-separador {
+  width: 1px;
+  background: var(--border);
+  margin: 2px 4px;
+}
+
+.editor-html-conteudo {
+  min-height: 180px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-h);
+  text-transform: none;
+}
+
+.editor-html-conteudo:focus {
+  outline: none;
+}
+
+.editor-html-conteudo p {
+  margin: 0 0 8px;
+}
+
+.editor-html-conteudo ul,
+.editor-html-conteudo ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+
+.editor-html-conteudo a {
+  color: var(--accent);
+}

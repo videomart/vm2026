@@ -22,6 +22,7 @@ import { CategoriasCliente } from './pages/setup/CategoriasCliente'
 import { ListaCampanhas } from './pages/campanhas/ListaCampanhas'
 import { NovaCampanha } from './pages/campanhas/NovaCampanha'
 import { GruposEnvio } from './pages/campanhas/GruposEnvio'
+import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -171,6 +172,7 @@ function App() {
           <Route path="/campanhas" element={<ListaCampanhas />} />
           <Route path="/campanhas/nova" element={<NovaCampanha />} />
           <Route path="/campanhas/grupos" element={<GruposEnvio />} />
+          <Route path="/campanhas/templates" element={<TemplatesEmail />} />
           {usuario.papel === 'admin' && (
             <Route path="/setup" element={<Setup />} />
           )}
@@ -182,6 +184,8 @@ function App() {
           )}
           {usuario.papel === 'admin' && (
             <Route path="/categorias" element={<Categorias />} />
+          )}
+          {usuario.papel === 'admin' && (
             <Route path="/categorias-cliente" element={<CategoriasCliente />} />
           )}
         </Routes>
