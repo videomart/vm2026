@@ -103,7 +103,7 @@ export function ListaClientes() {
                   <th {...grid.th('telefone')} style={{ whiteSpace: 'nowrap' }}>Telefone</th>
                   <th {...grid.th('cidade')} style={{ whiteSpace: 'nowrap' }}>Cidade/UF</th>
                   <th {...grid.th('categoria_cliente_nome')}>Categoria</th>
-                  <th {...grid.th('criado_em')}>Cadastrado em</th>
+                  <th {...grid.th('criado_em')}>Data</th>
                   <th {...grid.th('ativo')}>Status</th>
                   <th>Ações</th>
                 </tr>

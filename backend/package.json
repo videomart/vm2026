@@ -10,7 +10,8 @@
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "import:vm2025": "tsx src/scripts/importar-vm2025.ts",
     "import:leads-vm2025": "tsx src/scripts/importar-leads-vm2025.ts",
-    "import:categoria-cliente": "tsx src/scripts/importar-categoria-cliente.ts"
+    "import:categoria-cliente": "tsx src/scripts/importar-categoria-cliente.ts",
+    "import:data-cadastro-cliente": "tsx src/scripts/importar-data-cadastro-cliente.ts"
   },
   "dependencies": {
     "@types/nodemailer": "^8.0.1",
