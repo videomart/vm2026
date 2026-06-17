@@ -40,6 +40,10 @@ function paraFormulario(cliente: Cliente): CamposFormulario {
   for (const chave of Object.keys(campos) as (keyof CamposFormulario)[]) {
     campos[chave] = cliente[chave] ?? ''
   }
+  if (campos.cnpj_cpf) campos.cnpj_cpf = mascaraCNPJouCPF(campos.cnpj_cpf)
+  if (campos.telefone) campos.telefone = mascaraTelefone(campos.telefone)
+  if (campos.whatsapp) campos.whatsapp = mascaraTelefone(campos.whatsapp)
+  if (campos.cep) campos.cep = mascaraCEP(campos.cep)
   return campos
 }
 
@@ -273,8 +277,8 @@ export function FormularioCliente() {
           </div>
         </div>
 
-        {/* Linha 3: Endereço | Cidade | UF | CEP — endereço ocupa 1fr igual ao CNPJ/email */}
-        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 80px 120px' }}>
+        {/* Linha 3: Endereço | Cidade + UF + CEP */}
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="campo">
             <label htmlFor="endereco">Endereço</label>
             <input
@@ -283,44 +287,46 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('endereco', e.target.value)}
             />
           </div>
-          <div className="campo">
-            <label htmlFor="cidade">Cidade</label>
-            <input
-              id="cidade"
-              value={campos.cidade ?? ''}
-              onChange={(e) => atualizarCampo('cidade', e.target.value)}
-            />
-          </div>
-          <div className="campo">
-            <label htmlFor="uf">UF</label>
-            <input
-              id="uf"
-              maxLength={2}
-              value={campos.uf ?? ''}
-              onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
-            />
-          </div>
-          <div className={`campo${ec.cep ? ' campo-invalido' : ''}`}>
-            <label htmlFor="cep">CEP</label>
-            <input
-              id="cep"
-              value={campos.cep ?? ''}
-              onChange={(e) => atualizarCampo('cep', mascaraCEP(e.target.value))}
-              onBlur={() => validarCampo('cep')}
-              placeholder="00000-000"
-              maxLength={9}
-            />
-            {ec.cep && <span className="campo-erro">{ec.cep}</span>}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 120px', gap: '8px' }}>
+            <div className="campo">
+              <label htmlFor="cidade">Cidade</label>
+              <input
+                id="cidade"
+                value={campos.cidade ?? ''}
+                onChange={(e) => atualizarCampo('cidade', e.target.value)}
+              />
+            </div>
+            <div className="campo">
+              <label htmlFor="uf">UF</label>
+              <input
+                id="uf"
+                maxLength={2}
+                value={campos.uf ?? ''}
+                onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className={`campo${ec.cep ? ' campo-invalido' : ''}`}>
+              <label htmlFor="cep">CEP</label>
+              <input
+                id="cep"
+                value={campos.cep ?? ''}
+                onChange={(e) => atualizarCampo('cep', mascaraCEP(e.target.value))}
+                onBlur={() => validarCampo('cep')}
+                placeholder="00000-000"
+                maxLength={9}
+              />
+              {ec.cep && <span className="campo-erro">{ec.cep}</span>}
+            </div>
           </div>
         </div>
 
         {/* Linha 4: Observações | Condições + botões */}
-        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <div className="campo">
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr', alignItems: 'stretch' }}>
+          <div className="campo" style={{ display: 'flex', flexDirection: 'column' }}>
             <label htmlFor="observacoes">Observações</label>
             <textarea
               id="observacoes"
-              rows={3}
+              style={{ flex: 1, resize: 'vertical', minHeight: '60px' }}
               value={campos.observacoes ?? ''}
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
             />
@@ -340,12 +346,12 @@ export function FormularioCliente() {
               </datalist>
             </div>
             {erro && <p className="alerta-erro" role="alert" style={{ margin: '4px 0' }}>{erro}</p>}
-            <div className="barra-acoes-formulario" style={{ marginTop: '8px', padding: 0 }}>
-              <button className="botao" type="submit" disabled={salvando}>
-                {salvando ? 'Salvando...' : 'Salvar'}
-              </button>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '8px' }}>
               <button className="botao-secundario" type="button" onClick={() => navigate('/clientes')}>
                 Cancelar
+              </button>
+              <button className="botao" type="submit" disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>
