@@ -5,6 +5,39 @@ import { requireAdmin } from '../auth/middleware.js'
 
 export const setupRouter = Router()
 
+// ─── Logo da empresa ──────────────────────────────────────────────────────────
+
+setupRouter.get('/logo', async (_req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT logo_base64 FROM setup WHERE id = 1')
+    const logo = (rows as any[])[0]?.logo_base64
+    if (!logo) return res.status(404).end()
+    const matches = logo.match(/^data:([^;]+);base64,(.+)$/)
+    if (!matches) return res.status(400).end()
+    const buf = Buffer.from(matches[2], 'base64')
+    res.setHeader('Content-Type', matches[1])
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    res.send(buf)
+  } catch {
+    res.status(500).end()
+  }
+})
+
+setupRouter.put('/logo', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { logo_base64 } = req.body
+    if (!logo_base64) {
+      await pool.query('UPDATE setup SET logo_base64 = NULL WHERE id = 1')
+    } else {
+      if (!logo_base64.startsWith('data:image/')) return res.status(400).json({ erro: 'Formato inválido.' })
+      await pool.query('UPDATE setup SET logo_base64 = ? WHERE id = 1', [logo_base64])
+    }
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao salvar logo.' })
+  }
+})
+
 // ─── Setup global ─────────────────────────────────────────────────────────────
 
 setupRouter.get('/', requireAuth, async (_req, res) => {

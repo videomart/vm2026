@@ -17,7 +17,9 @@ export type Proposta = {
   cliente_id: number
   vendedor_id: number
   cliente_nome: string
+  cliente_email: string | null
   vendedor_nome: string
+  vendedor_email: string | null
   data: string
   validade: string | null
   condicoes_pagamento: string | null

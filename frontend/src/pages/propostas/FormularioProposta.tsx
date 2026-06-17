@@ -583,18 +583,6 @@ export function FormularioProposta() {
           </div>
         )}
 
-        {modalEmail && proposta && (() => {
-          const clienteSel = clientes.find((c) => String(c.id) === clienteId)
-          return (
-            <ModalEmailProposta
-              propostaId={proposta.id}
-              clienteEmail={clienteSel?.email ?? null}
-              clienteNome={clienteSel?.razao_social ?? ''}
-              onFechar={() => setModalEmail(false)}
-            />
-          )
-        })()}
-
         {/* ações para proposta aberta também quando editando */}
         {editando && proposta?.status === 'aberta' && (
           <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem' }}>
@@ -604,6 +592,15 @@ export function FormularioProposta() {
           </div>
         )}
       </form>
+
+      {modalEmail && proposta && (
+        <ModalEmailProposta
+          propostaId={proposta.id}
+          clienteEmail={proposta.cliente_email ?? null}
+          clienteNome={proposta.cliente_nome ?? ''}
+          onFechar={() => setModalEmail(false)}
+        />
+      )}
     </section>
   )
 }

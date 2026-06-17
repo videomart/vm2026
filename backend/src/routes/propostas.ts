@@ -3,6 +3,7 @@ import type { PoolConnection } from 'mysql2/promise'
 import { pool } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
 import { enviarEmail } from '../email.js'
+import { gerarHtmlProposta, gerarPdfProposta } from '../pdf.js'
 
 export const propostasRouter = Router()
 propostasRouter.use(requireAuth)
@@ -280,6 +281,13 @@ propostasRouter.post('/:id/email', async (req, res) => {
     const [rows] = await pool.query(
       `SELECT p.*,
               c.razao_social AS cliente_nome,
+              c.nome_fantasia AS cliente_fantasia,
+              c.cnpj_cpf AS cliente_cnpj_cpf,
+              c.endereco AS cliente_endereco,
+              c.cidade AS cliente_cidade,
+              c.uf AS cliente_uf,
+              c.cep AS cliente_cep,
+              c.telefone AS cliente_telefone,
               c.email AS cliente_email,
               u.nome AS vendedor_nome,
               u.email AS vendedor_email
@@ -292,8 +300,18 @@ propostasRouter.post('/:id/email', async (req, res) => {
     const p = (rows as any[])[0]
     if (!p) return res.status(404).json({ erro: 'Proposta não encontrada.' })
 
+    const [itens] = await pool.query(
+      `SELECT pi.*, prod.modelo AS produto_modelo
+       FROM proposta_itens pi
+       LEFT JOIN produtos prod ON prod.id = pi.produto_id
+       WHERE pi.proposta_id = ? ORDER BY pi.id ASC`,
+      [req.params.id],
+    )
+    p.itens = itens
+
     const [setupRows] = await pool.query('SELECT * FROM setup WHERE id = 1')
     const setup = (setupRows as any[])[0] ?? {}
+    const logoBase64: string | null = setup.logo_base64 ?? null
 
     const { para, assunto, mensagem } = req.body
 
@@ -302,12 +320,8 @@ propostasRouter.post('/:id/email', async (req, res) => {
 
     const assuntoFinal = assunto?.trim() || `Proposta Comercial #${p.id} — ${setup.empresa_nome ?? 'Videomart Broadcast'}`
 
-    const linkProposta = `${process.env.FRONTEND_URL ?? 'http://localhost:8082'}/propostas/${p.id}/imprimir`
-
     const html = `
       <p>${mensagem ? mensagem.replace(/\n/g, '<br>') : `Olá, segue em anexo a proposta comercial <strong>#${p.id}</strong>.`}</p>
-      <p>Para visualizar e imprimir a proposta, acesse o link abaixo:</p>
-      <p><a href="${linkProposta}">${linkProposta}</a></p>
       <br>
       <p>Atenciosamente,<br>
       <strong>${p.vendedor_nome}</strong><br>
@@ -316,11 +330,15 @@ propostasRouter.post('/:id/email', async (req, res) => {
       </p>
     `
 
+    const htmlProposta = gerarHtmlProposta(p, setup, logoBase64)
+    const pdfBuffer = await gerarPdfProposta(htmlProposta)
+
     await enviarEmail({
       to: destinatario,
       subject: assuntoFinal,
       html,
       replyTo: p.vendedor_email || undefined,
+      attachments: [{ filename: `proposta-${p.id}.pdf`, content: pdfBuffer, contentType: 'application/pdf' }],
     })
 
     res.json({ ok: true, enviado_para: destinatario })

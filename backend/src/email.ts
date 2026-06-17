@@ -36,6 +36,7 @@ export async function enviarEmail(opts: {
   text?: string
   html?: string
   replyTo?: string
+  attachments?: { filename: string; content: Buffer; contentType: string }[]
 }) {
   const cfg = await getSmtpConfig()
   const t = nodemailer.createTransport({
@@ -51,6 +52,7 @@ export async function enviarEmail(opts: {
     text: opts.text,
     html: opts.html,
     replyTo: opts.replyTo,
+    attachments: opts.attachments,
   })
 }
 

@@ -39,18 +39,18 @@ export function ImpressaoProposta() {
   const { id } = useParams()
   const [proposta, setProposta] = useState<Proposta | null>(null)
   const [empresa, setEmpresa] = useState<Empresa | null>(null)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([
       fetch(`/api/propostas/${id}`, { credentials: 'include' }),
       fetch('/api/setup', { credentials: 'include' }),
+      fetch('/api/setup/logo', { credentials: 'include' }),
     ])
-      .then(([rp, rs]) => {
+      .then(async ([rp, rs, rlo]) => {
         if (!rp.ok) return Promise.reject(rp.status)
-        return Promise.all([rp.json(), rs.ok ? rs.json() : Promise.resolve(null)])
-      })
-      .then(([dp, ds]) => {
+        const [dp, ds] = await Promise.all([rp.json(), rs.ok ? rs.json() : Promise.resolve(null)])
         const p = dp.proposta
         if (p) {
           p.condicoes_pagamento = stripHtml(p.condicoes_pagamento)
@@ -58,6 +58,10 @@ export function ImpressaoProposta() {
         }
         setProposta(p)
         if (ds?.setup) setEmpresa(ds.setup)
+        if (rlo.ok) {
+          const blob = await rlo.blob()
+          setLogoUrl(URL.createObjectURL(blob))
+        }
       })
       .catch((e) => setErro(e === 401 ? 'Sessão expirada. Faça login novamente.' : 'Proposta não encontrada.'))
   }, [id])
@@ -89,6 +93,7 @@ export function ImpressaoProposta() {
         {/* Cabeçalho */}
         <div className="impressao-cabecalho">
           <div className="impressao-empresa">
+            {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: '60px', maxWidth: '180px', objectFit: 'contain', display: 'block', marginBottom: '4px' }} />}
             <strong>{empresa?.empresa_nome ?? 'Videomart Broadcast'}</strong>
             {empresa?.empresa_cnpj && <span>CNPJ: {empresa.empresa_cnpj}</span>}
             {empresa?.empresa_endereco && <span>{empresa.empresa_endereco}</span>}

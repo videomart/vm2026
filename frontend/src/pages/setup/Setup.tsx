@@ -91,20 +91,64 @@ export function Setup() {
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [salvandoLogo, setSalvandoLogo] = useState(false)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/setup', { credentials: 'include' }),
       fetch('/api/setup/cotacao', { credentials: 'include' }),
+      fetch('/api/setup/logo', { credentials: 'include' }),
     ])
-      .then(([rs, rco]) => Promise.all([rs.json(), rco.json()]))
-      .then(([ds, dco]) => {
+      .then(async ([rs, rco, rlo]) => {
+        const [ds, dco] = await Promise.all([rs.json(), rco.json()])
         if (ds.setup) setCampos(paraForm(ds.setup))
         setCotacao(dco.cotacao ?? null)
+        if (rlo.ok) {
+          const blob = await rlo.blob()
+          setLogoPreview(URL.createObjectURL(blob))
+        }
       })
       .catch(() => setErro('Erro ao carregar configurações.'))
       .finally(() => setCarregando(false))
   }, [])
+
+  function onLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const base64 = reader.result as string
+      setLogoPreview(base64)
+      setSalvandoLogo(true)
+      try {
+        await fetch('/api/setup/logo', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ logo_base64: base64 }),
+        })
+      } finally {
+        setSalvandoLogo(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function removerLogo() {
+    setSalvandoLogo(true)
+    try {
+      await fetch('/api/setup/logo', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ logo_base64: null }),
+      })
+      setLogoPreview(null)
+    } finally {
+      setSalvandoLogo(false)
+    }
+  }
 
   function atualizar(campo: keyof SetupData, valor: string) {
     setCampos((c) => ({ ...c, [campo]: valor }))
@@ -169,6 +213,30 @@ export function Setup() {
       {/* ── Dados da empresa ── */}
       <form onSubmit={salvarSetup}>
         <h3 style={H3}>Dados da empresa</h3>
+
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+          {logoPreview ? (
+            <img src={logoPreview} alt="Logo" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: '#fff' }} />
+          ) : (
+            <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
+              Sem logo
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
+              {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
+              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange} disabled={salvandoLogo} />
+            </label>
+            {logoPreview && (
+              <button type="button" className="botao-perigo" onClick={removerLogo} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
+                Remover
+              </button>
+            )}
+            <span style={{ fontSize: '11px', color: 'var(--text)' }}>PNG, JPG ou SVG. Recomendado: até 400×100px.</span>
+          </div>
+        </div>
+
         <div className="grade-formulario">
           <div className="campo campo-largo">
             <label>Razão social</label>
