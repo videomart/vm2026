@@ -11,9 +11,9 @@ export type Direcao = 'asc' | 'desc'
  *   - `th(col)`: props do <th> (classe + onClick)
  *   - controles de paginação
  */
-export function useGrid<T>(itens: T[], colunaInicial?: keyof T, tamanhoPadrao: TamanhoPagina = 30) {
+export function useGrid<T>(itens: T[], colunaInicial?: keyof T, tamanhoPadrao: TamanhoPagina = 30, direcaoInicial: Direcao = 'asc') {
   const [coluna, setColuna] = useState<keyof T | null>(colunaInicial ?? null)
-  const [direcao, setDirecao] = useState<Direcao>('asc')
+  const [direcao, setDirecao] = useState<Direcao>(direcaoInicial)
   const [pagina, setPagina] = useState(1)
   const [tamanho, setTamanho] = useState<TamanhoPagina>(tamanhoPadrao)
 

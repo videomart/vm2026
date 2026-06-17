@@ -107,6 +107,7 @@ export function Condicoes() {
         <div className="campo">
           <label>Corpo — texto completo que vai para o campo Condições da proposta</label>
           <textarea
+            className="sem-uppercase"
             rows={9}
             value={novaCorpo}
             onChange={(e) => setNovaCorpo(e.target.value)}

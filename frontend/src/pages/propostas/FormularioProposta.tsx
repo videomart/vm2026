@@ -404,6 +404,7 @@ export function FormularioProposta() {
               )}
               <textarea
                 id="condicoes"
+                className="sem-uppercase"
                 rows={6}
                 value={condicoes}
                 onChange={(e) => setCondicoes(e.target.value)}
@@ -416,6 +417,7 @@ export function FormularioProposta() {
               <label htmlFor="observacoes">Observações</label>
               <textarea
                 id="observacoes"
+                className="sem-uppercase"
                 rows={6}
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}

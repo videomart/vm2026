@@ -326,6 +326,7 @@ export function FormularioCliente() {
             <label htmlFor="observacoes">Observações</label>
             <textarea
               id="observacoes"
+              className="sem-uppercase"
               style={{ flex: 1, resize: 'vertical', minHeight: '60px' }}
               value={campos.observacoes ?? ''}
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
@@ -336,6 +337,7 @@ export function FormularioCliente() {
               <label htmlFor="condicoes_pagamento">Condições de pagamento padrão</label>
               <input
                 id="condicoes_pagamento"
+                className="sem-uppercase"
                 list="lista-condicoes-cli"
                 value={campos.condicoes_pagamento ?? ''}
                 onChange={(e) => atualizarCampo('condicoes_pagamento', e.target.value)}

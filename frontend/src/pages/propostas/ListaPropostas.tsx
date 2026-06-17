@@ -28,7 +28,7 @@ export function ListaPropostas() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const grid = useGrid(propostas, 'data')
+  const grid = useGrid(propostas, 'id', 30, 'desc')
 
   function abrirProposta(p: Proposta) {
     salvarNavegacao('nav_propostas', grid.ordenados.map((x) => x.id))
