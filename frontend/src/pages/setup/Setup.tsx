@@ -275,6 +275,7 @@ export function Setup() {
           <div className="campo campo-largo">
             <label>Observações padrão das propostas</label>
             <textarea
+              className="sem-uppercase"
               rows={12}
               value={campos.observacoes_padrao}
               onChange={(e) => atualizar('observacoes_padrao', e.target.value)}
