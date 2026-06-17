@@ -14,7 +14,7 @@ export function ListaClientes() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const grid = useGrid(clientes, 'razao_social')
+  const grid = useGrid(clientes, 'id', 30, 'desc')
 
   function editarCliente(id: number) {
     salvarNavegacao('nav_clientes', grid.ordenados.map((c) => c.id))
