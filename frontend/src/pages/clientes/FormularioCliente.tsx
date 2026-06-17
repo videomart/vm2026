@@ -17,8 +17,11 @@ import type { Cliente } from './types'
 
 type Condicao = { id: number; descricao: string }
 type Contato = { id: number; nome: string; telefone: string | null; email: string | null }
+type CategoriaCliente = { id: number; nome: string }
 
-type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em'>
+type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em' | 'categoria_cliente_id' | 'categoria_cliente_nome'> & {
+  categoria_cliente_id: string
+}
 
 const CAMPOS_VAZIOS: CamposFormulario = {
   razao_social: '',
@@ -33,13 +36,16 @@ const CAMPOS_VAZIOS: CamposFormulario = {
   cep: '',
   observacoes: '',
   condicoes_pagamento: '',
+  categoria_cliente_id: '',
 }
 
 function paraFormulario(cliente: Cliente): CamposFormulario {
   const campos = { ...CAMPOS_VAZIOS }
   for (const chave of Object.keys(campos) as (keyof CamposFormulario)[]) {
-    campos[chave] = cliente[chave] ?? ''
+    if (chave === 'categoria_cliente_id') continue
+    campos[chave] = (cliente as any)[chave] ?? ''
   }
+  campos.categoria_cliente_id = cliente.categoria_cliente_id != null ? String(cliente.categoria_cliente_id) : ''
   if (campos.cnpj_cpf) campos.cnpj_cpf = mascaraCNPJouCPF(campos.cnpj_cpf)
   if (campos.telefone) campos.telefone = mascaraTelefone(campos.telefone)
   if (campos.whatsapp) campos.whatsapp = mascaraTelefone(campos.whatsapp)
@@ -69,6 +75,7 @@ export function FormularioCliente() {
   const [campos, setCampos] = useState<CamposFormulario>(CAMPOS_VAZIOS)
   const [criadoEm, setCriadoEm] = useState<string | null>(null)
   const [listaCondicoes, setListaCondicoes] = useState<string[]>([])
+  const [listaCategorias, setListaCategorias] = useState<CategoriaCliente[]>([])
   const [errosCampo, setErrosCampo] = useState<Erros>({})
   const [carregando, setCarregando] = useState(editando)
   const [salvando, setSalvando] = useState(false)
@@ -84,6 +91,10 @@ export function FormularioCliente() {
     fetch('/api/setup/condicoes', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => setListaCondicoes((d.condicoes ?? []).map((c: Condicao) => c.descricao)))
+      .catch(() => null)
+    fetch('/api/categorias-cliente', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setListaCategorias(d.categorias ?? []))
       .catch(() => null)
   }, [])
 
@@ -204,8 +215,8 @@ export function FormularioCliente() {
 
       <form onSubmit={handleSubmit}>
 
-        {/* Linha 1: Razão social + Nome fantasia */}
-        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        {/* Linha 1: Razão social + Nome fantasia + Categoria */}
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 200px' }}>
           <div className="campo">
             <label htmlFor="razao_social">Razão social *</label>
             <input
@@ -222,6 +233,17 @@ export function FormularioCliente() {
               value={campos.nome_fantasia ?? ''}
               onChange={(e) => atualizarCampo('nome_fantasia', e.target.value)}
             />
+          </div>
+          <div className="campo">
+            <label htmlFor="categoria_cliente_id">Categoria</label>
+            <select
+              id="categoria_cliente_id"
+              value={campos.categoria_cliente_id}
+              onChange={(e) => atualizarCampo('categoria_cliente_id', e.target.value)}
+            >
+              <option value="">—</option>
+              {listaCategorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
           </div>
         </div>
 
@@ -322,12 +344,13 @@ export function FormularioCliente() {
 
         {/* Linha 4: Observações | Condições + botões */}
         <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr', alignItems: 'stretch' }}>
-          <div className="campo" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="campo">
             <label htmlFor="observacoes">Observações</label>
             <textarea
               id="observacoes"
               className="sem-uppercase"
-              style={{ flex: 1, resize: 'vertical', minHeight: '60px' }}
+              rows={1}
+              style={{ resize: 'vertical' }}
               value={campos.observacoes ?? ''}
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
             />

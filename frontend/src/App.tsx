@@ -18,6 +18,7 @@ import { Setup } from './pages/setup/Setup'
 import { Condicoes } from './pages/setup/Condicoes'
 import { Marcas } from './pages/setup/Marcas'
 import { Categorias } from './pages/setup/Categorias'
+import { CategoriasCliente } from './pages/setup/CategoriasCliente'
 import { ListaCampanhas } from './pages/campanhas/ListaCampanhas'
 import { NovaCampanha } from './pages/campanhas/NovaCampanha'
 import { GruposEnvio } from './pages/campanhas/GruposEnvio'
@@ -26,7 +27,7 @@ type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
 const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
 
-const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias']
+const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -133,6 +134,7 @@ function App() {
                   <NavLink to="/usuarios" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Usuários</NavLink>
                   <NavLink to="/marcas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Marcas</NavLink>
                   <NavLink to="/categorias" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias</NavLink>
+                  <NavLink to="/categorias-cliente" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de cliente</NavLink>
                 </div>
               )}
             </>
@@ -180,6 +182,7 @@ function App() {
           )}
           {usuario.papel === 'admin' && (
             <Route path="/categorias" element={<Categorias />} />
+            <Route path="/categorias-cliente" element={<CategoriasCliente />} />
           )}
         </Routes>
       </main>

@@ -12,6 +12,7 @@ import { usuariosRouter } from './routes/usuarios.js'
 import { setupRouter } from './routes/setup.js'
 import { marcasRouter } from './routes/marcas.js'
 import { categoriasRouter } from './routes/categorias.js'
+import { categoriasClienteRouter } from './routes/categoriasCliente.js'
 import { campanhasRouter } from './routes/campanhas.js'
 
 const app = express()
@@ -32,6 +33,7 @@ app.use('/api/usuarios', usuariosRouter)
 app.use('/api/setup', setupRouter)
 app.use('/api/marcas', marcasRouter)
 app.use('/api/categorias', categoriasRouter)
+app.use('/api/categorias-cliente', categoriasClienteRouter)
 app.use('/api/campanhas', campanhasRouter)
 
 app.get('/api/health', async (_req, res) => {

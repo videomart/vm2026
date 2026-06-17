@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 type Grupo = { id: number; nome: string; descricao: string | null; total_clientes: number }
 type ClienteGrupo = { id: number; nome: string; email: string | null }
 type ClienteBusca = { id: number; razao_social: string; email: string | null }
+type CategoriaCliente = { id: number; nome: string }
 
 export function GruposEnvio() {
   const [grupos, setGrupos] = useState<Grupo[]>([])
@@ -16,6 +17,9 @@ export function GruposEnvio() {
   const [novaDesc, setNovaDesc] = useState('')
   const [erro, setErro] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [categorias, setCategorias] = useState<CategoriaCliente[]>([])
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<Record<number, string>>({})
+  const [adicionandoCategoria, setAdicionandoCategoria] = useState<number | null>(null)
   const buscaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -24,6 +28,10 @@ export function GruposEnvio() {
       .then((d) => setGrupos(d.grupos ?? []))
       .catch(() => setErro('Erro ao carregar grupos.'))
       .finally(() => setCarregando(false))
+    fetch('/api/categorias-cliente', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setCategorias(d.categorias ?? []))
+      .catch(() => null)
   }, [])
 
   // Busca de clientes com debounce
@@ -111,6 +119,35 @@ export function GruposEnvio() {
     }
   }
 
+  async function adicionarCategoria(grupoId: number) {
+    const categoriaId = categoriaSelecionada[grupoId]
+    if (!categoriaId) return
+    setAdicionandoCategoria(grupoId)
+    setErro(null)
+    try {
+      const r = await fetch(`/api/clientes?categoria_cliente_id=${categoriaId}`, { credentials: 'include' })
+      const d = await r.json()
+      const candidatos: ClienteBusca[] = (d.clientes ?? []).filter((c: any) => c.email)
+      if (!candidatos.length) { setErro('Nenhum cliente com e-mail nesta categoria.'); return }
+      const idsNoGrupo = new Set(clientesGrupo.map((c) => c.id))
+      const novos = candidatos.filter((c) => !idsNoGrupo.has(c.id))
+      if (!novos.length) { setMsg('Todos os clientes desta categoria já estão no grupo.'); return }
+      await fetch(`/api/campanhas/grupos/${grupoId}/clientes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cliente_ids: novos.map((c) => c.id) }),
+      })
+      setClientesGrupo((prev) => [...prev, ...novos.map((c) => ({ id: c.id, nome: c.razao_social, email: c.email }))].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+      setGrupos((prev) => prev.map((g) => g.id === grupoId ? { ...g, total_clientes: g.total_clientes + novos.length } : g))
+      setMsg(`${novos.length} cliente(s) adicionado(s) ao grupo.`)
+    } catch {
+      setErro('Erro ao adicionar clientes da categoria.')
+    } finally {
+      setAdicionandoCategoria(null)
+    }
+  }
+
   async function removerCliente(grupoId: number, clienteId: number) {
     try {
       await fetch(`/api/campanhas/grupos/${grupoId}/clientes/${clienteId}`, { method: 'DELETE', credentials: 'include' })
@@ -171,6 +208,28 @@ export function GruposEnvio() {
           {/* Painel expandido */}
           {grupoAberto === g.id && (
             <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+              {/* Adicionar todos os clientes de uma categoria */}
+              <div style={{ display: 'flex', gap: '8px', margin: '12px 0', alignItems: 'flex-end' }}>
+                <div className="campo" style={{ margin: 0, flex: 1 }}>
+                  <label>Adicionar por categoria</label>
+                  <select
+                    value={categoriaSelecionada[g.id] ?? ''}
+                    onChange={(e) => setCategoriaSelecionada((prev) => ({ ...prev, [g.id]: e.target.value }))}
+                  >
+                    <option value="">— Selecionar categoria —</option>
+                    {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                </div>
+                <button
+                  className="botao-secundario"
+                  type="button"
+                  disabled={!categoriaSelecionada[g.id] || adicionandoCategoria === g.id}
+                  onClick={() => adicionarCategoria(g.id)}
+                >
+                  {adicionandoCategoria === g.id ? 'Adicionando...' : '+ Adicionar todos'}
+                </button>
+              </div>
+
               {/* Campo de busca para adicionar clientes */}
               <div style={{ margin: '12px 0 4px', position: 'relative' }}>
                 <input

@@ -12,6 +12,8 @@ export type Cliente = {
   cep: string | null
   observacoes: string | null
   condicoes_pagamento: string | null
+  categoria_cliente_id: number | null
+  categoria_cliente_nome?: string | null
   ativo: 0 | 1
   criado_em: string
 }

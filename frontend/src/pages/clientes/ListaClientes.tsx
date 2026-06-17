@@ -83,6 +83,7 @@ export function ListaClientes() {
                   <th {...grid.th('cnpj_cpf')}>CNPJ/CPF</th>
                   <th {...grid.th('telefone')}>Telefone</th>
                   <th {...grid.th('cidade')}>Cidade/UF</th>
+                  <th {...grid.th('categoria_cliente_nome')}>Categoria</th>
                   <th {...grid.th('criado_em')}>Cadastrado em</th>
                   <th {...grid.th('ativo')}>Status</th>
                   <th>Ações</th>
@@ -96,6 +97,7 @@ export function ListaClientes() {
                     <td>{cliente.cnpj_cpf ? formatarCNPJCPF(cliente.cnpj_cpf) : '—'}</td>
                     <td>{cliente.telefone ? formatarTelefone(cliente.telefone) : '—'}</td>
                     <td>{cliente.cidade ?? '—'}{cliente.uf ? `/${cliente.uf}` : ''}</td>
+                    <td>{cliente.categoria_cliente_nome ?? '—'}</td>
                     <td>{formatarData(cliente.criado_em)}</td>
                     <td>
                       {cliente.ativo

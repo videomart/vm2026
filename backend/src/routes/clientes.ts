@@ -19,14 +19,19 @@ const CAMPOS_EDITAVEIS = [
   'cep',
   'observacoes',
   'condicoes_pagamento',
+  'categoria_cliente_id',
 ] as const
 
 function dadosCliente(body: any) {
-  const dados: Record<string, string | null> = {}
+  const dados: Record<string, string | number | null> = {}
   for (const campo of CAMPOS_EDITAVEIS) {
     if (body[campo] !== undefined) {
       const valor = body[campo]
-      dados[campo] = typeof valor === 'string' && valor.trim() === '' ? null : valor
+      if (campo === 'categoria_cliente_id') {
+        dados[campo] = valor === '' || valor === null ? null : Number(valor)
+      } else {
+        dados[campo] = typeof valor === 'string' && valor.trim() === '' ? null : valor
+      }
     }
   }
   return dados
@@ -35,26 +40,34 @@ function dadosCliente(body: any) {
 clientesRouter.get('/', async (req, res) => {
   const busca = typeof req.query.q === 'string' ? req.query.q.trim() : ''
   const incluirInativos = req.query.incluirInativos === '1'
+  const categoriaId = typeof req.query.categoria_cliente_id === 'string' ? req.query.categoria_cliente_id : ''
 
   const condicoes: string[] = []
   const parametros: any[] = []
 
   if (!incluirInativos) {
-    condicoes.push('ativo = 1')
+    condicoes.push('c.ativo = 1')
   }
   if (busca) {
-    condicoes.push('(razao_social LIKE ? OR nome_fantasia LIKE ? OR cnpj_cpf LIKE ?)')
+    condicoes.push('(c.razao_social LIKE ? OR c.nome_fantasia LIKE ? OR c.cnpj_cpf LIKE ?)')
     const termo = `%${busca}%`
     parametros.push(termo, termo, termo)
+  }
+  if (categoriaId) {
+    condicoes.push('c.categoria_cliente_id = ?')
+    parametros.push(categoriaId)
   }
 
   const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
   const [rows] = await pool.query(
-    `SELECT id, razao_social, nome_fantasia, cnpj_cpf, email, telefone, whatsapp,
-            endereco, cidade, uf, cep, observacoes, condicoes_pagamento, ativo, criado_em, atualizado_em
-       FROM clientes
+    `SELECT c.id, c.razao_social, c.nome_fantasia, c.cnpj_cpf, c.email, c.telefone, c.whatsapp,
+            c.endereco, c.cidade, c.uf, c.cep, c.observacoes, c.condicoes_pagamento,
+            c.categoria_cliente_id, cc.nome AS categoria_cliente_nome,
+            c.ativo, c.criado_em, c.atualizado_em
+       FROM clientes c
+       LEFT JOIN categorias_cliente cc ON cc.id = c.categoria_cliente_id
        ${where}
-       ORDER BY razao_social`,
+       ORDER BY c.razao_social`,
     parametros,
   )
 
