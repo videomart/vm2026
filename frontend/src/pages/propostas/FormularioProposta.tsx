@@ -11,6 +11,14 @@ import type { Produto } from '../produtos/types'
 
 type UsuarioSimples = { id: number; nome: string; papel: string }
 
+function linkWhatsApp(numero: string | null | undefined, mensagem: string): string | null {
+  if (!numero) return null
+  const digitos = numero.replace(/\D/g, '')
+  if (!digitos) return null
+  const comDDI = digitos.length <= 11 ? `55${digitos}` : digitos
+  return `https://wa.me/${comDDI}?text=${encodeURIComponent(mensagem)}`
+}
+
 const ITEM_VAZIO: ItemFormulario = {
   produto_id: null,
   descricao: '',
@@ -579,6 +587,21 @@ export function FormularioProposta() {
             <button type="button" className="botao-secundario" onClick={() => setModalEmail(true)}>
               ✉ Enviar por e-mail
             </button>
+            {(() => {
+              const link = linkWhatsApp(
+                proposta.cliente_whatsapp || proposta.cliente_telefone,
+                `Olá, segue o link da proposta comercial #${proposta.id}: ${window.location.origin}/propostas/${proposta.id}/imprimir`,
+              )
+              return link ? (
+                <a className="botao-secundario" href={link} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
+                  📱 Enviar por WhatsApp
+                </a>
+              ) : (
+                <button type="button" className="botao-secundario" disabled title="Cliente não tem WhatsApp ou telefone cadastrado.">
+                  📱 Enviar por WhatsApp
+                </button>
+              )
+            })()}
             <button type="button" className="botao-secundario" onClick={() => navigate('/propostas')}>
               Voltar
             </button>

@@ -98,6 +98,7 @@ propostasRouter.get('/:id', async (req, res) => {
               c.uf AS cliente_uf,
               c.cep AS cliente_cep,
               c.telefone AS cliente_telefone,
+              c.whatsapp AS cliente_whatsapp,
               c.email AS cliente_email,
               u.nome AS vendedor_nome,
               u.email AS vendedor_email
