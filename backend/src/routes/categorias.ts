@@ -9,9 +9,13 @@ categoriasRouter.use(requireAuth)
 
 categoriasRouter.get('/', async (_req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT id, nome FROM categorias WHERE ativo = 1 ORDER BY nome ASC',
-    )
+    const [rows] = await pool.query(`
+      SELECT c.id, c.nome,
+             (SELECT COUNT(*) FROM produtos p WHERE p.categoria = c.nome) AS total_produtos
+      FROM categorias c
+      WHERE c.ativo = 1
+      ORDER BY c.nome ASC
+    `)
     res.json({ categorias: rows })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar categorias.' })
@@ -20,6 +24,14 @@ categoriasRouter.get('/', async (_req, res) => {
 
 categoriasRouter.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    const [rows] = await pool.query(
+      `SELECT c.nome, (SELECT COUNT(*) FROM produtos p WHERE p.categoria = c.nome) AS total
+       FROM categorias c WHERE c.id = ?`,
+      [req.params.id],
+    ) as any[]
+    if ((rows as any[])[0]?.total > 0) {
+      return res.status(409).json({ erro: 'Esta categoria está vinculada a produtos e não pode ser removida.' })
+    }
     await pool.query('UPDATE categorias SET ativo = 0 WHERE id = ?', [req.params.id])
     res.json({ ok: true })
   } catch {

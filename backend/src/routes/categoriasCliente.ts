@@ -9,9 +9,13 @@ categoriasClienteRouter.use(requireAuth)
 
 categoriasClienteRouter.get('/', async (_req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT id, nome FROM categorias_cliente WHERE ativo = 1 ORDER BY nome ASC',
-    )
+    const [rows] = await pool.query(`
+      SELECT cc.id, cc.nome,
+             (SELECT COUNT(*) FROM clientes c WHERE c.categoria_cliente_id = cc.id) AS total_clientes
+      FROM categorias_cliente cc
+      WHERE cc.ativo = 1
+      ORDER BY cc.nome ASC
+    `)
     res.json({ categorias: rows })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar categorias de cliente.' })
@@ -35,6 +39,13 @@ categoriasClienteRouter.post('/', requireAdmin, async (req, res) => {
 
 categoriasClienteRouter.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    const [rows] = await pool.query(
+      'SELECT COUNT(*) AS total FROM clientes WHERE categoria_cliente_id = ?',
+      [req.params.id],
+    ) as any[]
+    if ((rows as any[])[0]?.total > 0) {
+      return res.status(409).json({ erro: 'Esta categoria está vinculada a clientes e não pode ser removida.' })
+    }
     await pool.query('UPDATE categorias_cliente SET ativo = 0 WHERE id = ?', [req.params.id])
     res.json({ ok: true })
   } catch {

@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useGrid } from '../../hooks/useGrid'
 
-type Item = { id: number; nome: string }
+type Item = { id: number; nome: string; total_clientes: number }
 
 export function CategoriasCliente() {
   const [lista, setLista] = useState<Item[]>([])
   const [nova, setNova] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+
+  const grid = useGrid(lista, 'nome')
 
   async function carregar() {
     const res = await fetch('/api/categorias-cliente', { credentials: 'include' })
@@ -27,7 +30,7 @@ export function CategoriasCliente() {
     })
     const d = await res.json()
     if (res.ok) {
-      setLista((l) => [...l, d.categoria].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+      setLista((l) => [...l, { ...d.categoria, total_clientes: 0 }])
       setNova('')
     } else {
       setErro(d.erro ?? 'Erro ao adicionar.')
@@ -36,8 +39,14 @@ export function CategoriasCliente() {
 
   async function remover(id: number, nome: string) {
     if (!confirm(`Remover a categoria "${nome}"?`)) return
-    await fetch(`/api/categorias-cliente/${id}`, { method: 'DELETE', credentials: 'include' })
-    setLista((l) => l.filter((x) => x.id !== id))
+    setErro(null)
+    const res = await fetch(`/api/categorias-cliente/${id}`, { method: 'DELETE', credentials: 'include' })
+    if (res.ok) {
+      setLista((l) => l.filter((x) => x.id !== id))
+    } else {
+      const d = await res.json()
+      setErro(d.erro ?? 'Erro ao remover categoria.')
+    }
   }
 
   if (carregando) return <p>Carregando...</p>
@@ -61,16 +70,31 @@ export function CategoriasCliente() {
       </div>
       <div className="tabela-wrapper">
         <table className="tabela">
-          <thead><tr><th>Nome</th><th style={{ width: '80px' }}></th></tr></thead>
+          <thead>
+            <tr>
+              <th {...grid.th('nome')}>Nome</th>
+              <th {...grid.th('total_clientes')} style={{ width: '140px' }}>Clientes vinculados</th>
+              <th style={{ width: '80px' }}></th>
+            </tr>
+          </thead>
           <tbody>
-            {lista.length === 0 && (
-              <tr><td colSpan={2} style={{ textAlign: 'center' }}>Nenhuma categoria cadastrada.</td></tr>
+            {grid.ordenados.length === 0 && (
+              <tr><td colSpan={3} style={{ textAlign: 'center' }}>Nenhuma categoria cadastrada.</td></tr>
             )}
-            {lista.map((c) => (
+            {grid.ordenados.map((c) => (
               <tr key={c.id}>
                 <td>{c.nome}</td>
+                <td>{c.total_clientes}</td>
                 <td>
-                  <button className="botao-perigo" type="button" onClick={() => remover(c.id, c.nome)}>Remover</button>
+                  <button
+                    className="botao-perigo"
+                    type="button"
+                    onClick={() => remover(c.id, c.nome)}
+                    disabled={c.total_clientes > 0}
+                    title={c.total_clientes > 0 ? 'Categoria vinculada a clientes não pode ser removida.' : undefined}
+                  >
+                    Remover
+                  </button>
                 </td>
               </tr>
             ))}

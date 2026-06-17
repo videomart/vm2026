@@ -9,9 +9,13 @@ marcasRouter.use(requireAuth)
 
 marcasRouter.get('/', async (_req, res) => {
   try {
-    const [rows] = await pool.query(
-      'SELECT id, nome FROM marcas WHERE ativo = 1 ORDER BY nome ASC',
-    )
+    const [rows] = await pool.query(`
+      SELECT m.id, m.nome,
+             (SELECT COUNT(*) FROM produtos p WHERE p.marca = m.nome) AS total_produtos
+      FROM marcas m
+      WHERE m.ativo = 1
+      ORDER BY m.nome ASC
+    `)
     res.json({ marcas: rows })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar marcas.' })
@@ -20,6 +24,14 @@ marcasRouter.get('/', async (_req, res) => {
 
 marcasRouter.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    const [rows] = await pool.query(
+      `SELECT m.nome, (SELECT COUNT(*) FROM produtos p WHERE p.marca = m.nome) AS total
+       FROM marcas m WHERE m.id = ?`,
+      [req.params.id],
+    ) as any[]
+    if ((rows as any[])[0]?.total > 0) {
+      return res.status(409).json({ erro: 'Esta marca está vinculada a produtos e não pode ser removida.' })
+    }
     await pool.query('UPDATE marcas SET ativo = 0 WHERE id = ?', [req.params.id])
     res.json({ ok: true })
   } catch {

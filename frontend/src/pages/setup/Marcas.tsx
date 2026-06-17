@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
+import { useGrid } from '../../hooks/useGrid'
 
-type Item = { id: number; nome: string }
+type Item = { id: number; nome: string; total_produtos: number }
 
 export function Marcas() {
   const [lista, setLista] = useState<Item[]>([])
   const [nova, setNova] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+
+  const grid = useGrid(lista, 'nome')
 
   async function carregar() {
     const res = await fetch('/api/marcas', { credentials: 'include' })
@@ -27,7 +30,7 @@ export function Marcas() {
     })
     const d = await res.json()
     if (res.ok) {
-      setLista((l) => [...l, d.marca].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+      setLista((l) => [...l, { ...d.marca, total_produtos: 0 }])
       setNova('')
     } else {
       setErro(d.erro ?? 'Erro ao adicionar.')
@@ -36,8 +39,14 @@ export function Marcas() {
 
   async function remover(id: number, nome: string) {
     if (!confirm(`Remover a marca "${nome}"?`)) return
-    await fetch(`/api/marcas/${id}`, { method: 'DELETE', credentials: 'include' })
-    setLista((l) => l.filter((x) => x.id !== id))
+    setErro(null)
+    const res = await fetch(`/api/marcas/${id}`, { method: 'DELETE', credentials: 'include' })
+    if (res.ok) {
+      setLista((l) => l.filter((x) => x.id !== id))
+    } else {
+      const d = await res.json()
+      setErro(d.erro ?? 'Erro ao remover marca.')
+    }
   }
 
   if (carregando) return <p>Carregando...</p>
@@ -58,16 +67,31 @@ export function Marcas() {
       </div>
       <div className="tabela-wrapper">
         <table className="tabela">
-          <thead><tr><th>Nome</th><th style={{ width: '80px' }}></th></tr></thead>
+          <thead>
+            <tr>
+              <th {...grid.th('nome')}>Nome</th>
+              <th {...grid.th('total_produtos')} style={{ width: '140px' }}>Produtos vinculados</th>
+              <th style={{ width: '80px' }}></th>
+            </tr>
+          </thead>
           <tbody>
-            {lista.length === 0 && (
-              <tr><td colSpan={2} style={{ textAlign: 'center' }}>Nenhuma marca cadastrada.</td></tr>
+            {grid.ordenados.length === 0 && (
+              <tr><td colSpan={3} style={{ textAlign: 'center' }}>Nenhuma marca cadastrada.</td></tr>
             )}
-            {lista.map((m) => (
+            {grid.ordenados.map((m) => (
               <tr key={m.id}>
                 <td>{m.nome}</td>
+                <td>{m.total_produtos}</td>
                 <td>
-                  <button className="botao-perigo" type="button" onClick={() => remover(m.id, m.nome)}>Remover</button>
+                  <button
+                    className="botao-perigo"
+                    type="button"
+                    onClick={() => remover(m.id, m.nome)}
+                    disabled={m.total_produtos > 0}
+                    title={m.total_produtos > 0 ? 'Marca vinculada a produtos não pode ser removida.' : undefined}
+                  >
+                    Remover
+                  </button>
                 </td>
               </tr>
             ))}
