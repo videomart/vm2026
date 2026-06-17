@@ -199,10 +199,10 @@ export function FormularioCliente() {
       </h2>
 
       <form onSubmit={handleSubmit}>
-        <div className="grade-formulario">
 
-          {/* Linha 1: Razão social + Nome fantasia */}
-          <div className="campo campo-largo">
+        {/* Linha 1: Razão social + Nome fantasia */}
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <div className="campo">
             <label htmlFor="razao_social">Razão social *</label>
             <input
               id="razao_social"
@@ -211,7 +211,7 @@ export function FormularioCliente() {
               required
             />
           </div>
-          <div className="campo campo-largo">
+          <div className="campo">
             <label htmlFor="nome_fantasia">Nome fantasia</label>
             <input
               id="nome_fantasia"
@@ -219,8 +219,10 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('nome_fantasia', e.target.value)}
             />
           </div>
+        </div>
 
-          {/* Linha 2: CNPJ | E-mail | Telefone | WhatsApp */}
+        {/* Linha 2: CNPJ | E-mail | Telefone | WhatsApp */}
+        <div className="grade-formulario grade-4col">
           <div className={`campo${ec.cnpj_cpf ? ' campo-invalido' : ''}`}>
             <label htmlFor="cnpj_cpf">CNPJ/CPF</label>
             <input
@@ -269,9 +271,11 @@ export function FormularioCliente() {
             />
             {ec.whatsapp && <span className="campo-erro">{ec.whatsapp}</span>}
           </div>
+        </div>
 
-          {/* Linha 3: Endereço | Cidade | UF | CEP */}
-          <div className="campo campo-largo">
+        {/* Linha 3: Endereço | Cidade | UF | CEP */}
+        <div className="grade-formulario" style={{ gridTemplateColumns: '2fr 1fr 80px 120px' }}>
+          <div className="campo">
             <label htmlFor="endereco">Endereço</label>
             <input
               id="endereco"
@@ -287,7 +291,7 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('cidade', e.target.value)}
             />
           </div>
-          <div className="campo" style={{ maxWidth: '80px' }}>
+          <div className="campo">
             <label htmlFor="uf">UF</label>
             <input
               id="uf"
@@ -296,7 +300,7 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
             />
           </div>
-          <div className={`campo${ec.cep ? ' campo-invalido' : ''}`} style={{ maxWidth: '130px' }}>
+          <div className={`campo${ec.cep ? ' campo-invalido' : ''}`}>
             <label htmlFor="cep">CEP</label>
             <input
               id="cep"
@@ -308,9 +312,11 @@ export function FormularioCliente() {
             />
             {ec.cep && <span className="campo-erro">{ec.cep}</span>}
           </div>
+        </div>
 
-          {/* Linha 4: Condições | Observações */}
-          <div className="campo campo-largo">
+        {/* Linha 4: Condições | Observações */}
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <div className="campo">
             <label htmlFor="condicoes_pagamento">Condições de pagamento padrão</label>
             <input
               id="condicoes_pagamento"
@@ -323,7 +329,7 @@ export function FormularioCliente() {
               {listaCondicoes.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
-          <div className="campo campo-largo">
+          <div className="campo">
             <label htmlFor="observacoes">Observações</label>
             <textarea
               id="observacoes"
@@ -332,7 +338,6 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
             />
           </div>
-
         </div>
 
         {erro && <p className="alerta-erro" role="alert">{erro}</p>}
