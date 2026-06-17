@@ -273,8 +273,8 @@ export function FormularioCliente() {
           </div>
         </div>
 
-        {/* Linha 3: Endereço | Cidade | UF | CEP */}
-        <div className="grade-formulario" style={{ gridTemplateColumns: '2fr 1fr 80px 120px' }}>
+        {/* Linha 3: Endereço | Cidade | UF | CEP — endereço ocupa 1fr igual ao CNPJ/email */}
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 80px 120px' }}>
           <div className="campo">
             <label htmlFor="endereco">Endereço</label>
             <input
@@ -314,21 +314,8 @@ export function FormularioCliente() {
           </div>
         </div>
 
-        {/* Linha 4: Condições | Observações */}
+        {/* Linha 4: Observações | Condições + botões */}
         <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <div className="campo">
-            <label htmlFor="condicoes_pagamento">Condições de pagamento padrão</label>
-            <input
-              id="condicoes_pagamento"
-              list="lista-condicoes-cli"
-              value={campos.condicoes_pagamento ?? ''}
-              onChange={(e) => atualizarCampo('condicoes_pagamento', e.target.value)}
-              autoComplete="off"
-            />
-            <datalist id="lista-condicoes-cli">
-              {listaCondicoes.map((c) => <option key={c} value={c} />)}
-            </datalist>
-          </div>
           <div className="campo">
             <label htmlFor="observacoes">Observações</label>
             <textarea
@@ -338,18 +325,32 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
             />
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="campo" style={{ flex: 1 }}>
+              <label htmlFor="condicoes_pagamento">Condições de pagamento padrão</label>
+              <input
+                id="condicoes_pagamento"
+                list="lista-condicoes-cli"
+                value={campos.condicoes_pagamento ?? ''}
+                onChange={(e) => atualizarCampo('condicoes_pagamento', e.target.value)}
+                autoComplete="off"
+              />
+              <datalist id="lista-condicoes-cli">
+                {listaCondicoes.map((c) => <option key={c} value={c} />)}
+              </datalist>
+            </div>
+            {erro && <p className="alerta-erro" role="alert" style={{ margin: '4px 0' }}>{erro}</p>}
+            <div className="barra-acoes-formulario" style={{ marginTop: '8px', padding: 0 }}>
+              <button className="botao" type="submit" disabled={salvando}>
+                {salvando ? 'Salvando...' : 'Salvar'}
+              </button>
+              <button className="botao-secundario" type="button" onClick={() => navigate('/clientes')}>
+                Cancelar
+              </button>
+            </div>
+          </div>
         </div>
 
-        {erro && <p className="alerta-erro" role="alert">{erro}</p>}
-
-        <div className="barra-acoes-formulario">
-          <button className="botao" type="submit" disabled={salvando}>
-            {salvando ? 'Salvando...' : 'Salvar'}
-          </button>
-          <button className="botao-secundario" type="button" onClick={() => navigate('/clientes')}>
-            Cancelar
-          </button>
-        </div>
       </form>
 
       {/* ── Contatos ─────────────────────────────────────────────── */}
