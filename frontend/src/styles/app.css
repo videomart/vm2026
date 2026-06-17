@@ -1291,3 +1291,21 @@
 .editor-html-conteudo a {
   color: var(--accent);
 }
+
+.editor-html-bruto {
+  width: 100%;
+  min-height: 180px;
+  max-height: 420px;
+  border: none;
+  padding: 12px 14px;
+  font-family: 'SF Mono', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-h);
+  background: var(--bg);
+  resize: vertical;
+}
+
+.editor-html-bruto:focus {
+  outline: none;
+}
