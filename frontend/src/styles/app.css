@@ -398,7 +398,8 @@
   white-space: nowrap;
 }
 
-.tabela td:last-child {
+.tabela td:last-child,
+.tabela th:last-child {
   white-space: nowrap;
   width: 1%;  /* colapsa a coluna de ações ao mínimo necessário */
 }

@@ -95,17 +95,17 @@ export function ListaClientes() {
         {!carregando && clientes.length === 0 && <p className="estado-vazio">Nenhum cliente encontrado.</p>}
         {!carregando && clientes.length > 0 && (
           <>
-            <table className="tabela" style={{ minWidth: '960px' }}>
+            <table className="tabela" style={{ minWidth: '1240px' }}>
               <thead>
                 <tr>
                   <th {...grid.th('razao_social')}>Razão social</th>
                   <th {...grid.th('cnpj_cpf')} style={{ whiteSpace: 'nowrap' }}>CNPJ/CPF</th>
                   <th {...grid.th('telefone')} style={{ whiteSpace: 'nowrap' }}>Telefone</th>
                   <th {...grid.th('cidade')} style={{ whiteSpace: 'nowrap' }}>Cidade/UF</th>
-                  <th {...grid.th('categoria_cliente_nome')}>Categoria</th>
-                  <th {...grid.th('criado_em')}>Data</th>
-                  <th {...grid.th('ativo')}>Status</th>
-                  <th>Ações</th>
+                  <th {...grid.th('categoria_cliente_nome')} style={{ whiteSpace: 'nowrap' }}>Categoria</th>
+                  <th {...grid.th('criado_em')} style={{ whiteSpace: 'nowrap' }}>Data</th>
+                  <th {...grid.th('ativo')} style={{ whiteSpace: 'nowrap' }}>Status</th>
+                  <th style={{ whiteSpace: 'nowrap' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
