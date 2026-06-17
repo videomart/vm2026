@@ -157,6 +157,7 @@ propostasRouter.post('/', async (req, res) => {
     res.status(201).json({ proposta: (rows as any[])[0] })
   } catch (err: any) {
     await conn.rollback()
+    console.error('Erro ao criar proposta:', err)
     if (err?.code === 'ER_NO_REFERENCED_ROW_2') return res.status(400).json({ erro: 'Cliente ou vendedor inválido.' })
     res.status(500).json({ erro: 'Erro ao criar proposta.' })
   } finally {

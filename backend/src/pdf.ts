@@ -4,9 +4,10 @@ function fmt(v: number | string) {
   return Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function fmtData(s: string | null) {
+function fmtData(s: string | Date | null) {
   if (!s) return ''
-  return s.slice(0, 10).split('-').reverse().join('/')
+  const str = s instanceof Date ? s.toISOString() : String(s)
+  return str.slice(0, 10).split('-').reverse().join('/')
 }
 
 function stripHtml(texto: string | null | undefined): string {
