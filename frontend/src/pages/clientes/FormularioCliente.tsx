@@ -16,6 +16,7 @@ import { formatarData } from '../../utils/formatar'
 import type { Cliente } from './types'
 
 type Condicao = { id: number; descricao: string }
+type Contato = { id: number; nome: string; telefone: string | null; email: string | null }
 
 type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em'>
 
@@ -46,23 +47,15 @@ type Erros = Partial<Record<keyof CamposFormulario, string>>
 
 function validarCampos(campos: CamposFormulario): Erros {
   const erros: Erros = {}
-  if (campos.cnpj_cpf && !validarCNPJouCPF(campos.cnpj_cpf)) {
-    erros.cnpj_cpf = 'CNPJ ou CPF inválido.'
-  }
-  if (campos.email && !validarEmail(campos.email)) {
-    erros.email = 'E-mail inválido.'
-  }
-  if (campos.telefone && !validarTelefone(campos.telefone)) {
-    erros.telefone = 'Telefone inválido. Use (DDD) + número.'
-  }
-  if (campos.whatsapp && !validarTelefone(campos.whatsapp)) {
-    erros.whatsapp = 'WhatsApp inválido. Use (DDD) + número.'
-  }
-  if (campos.cep && !validarCEP(campos.cep)) {
-    erros.cep = 'CEP inválido. Use 8 dígitos.'
-  }
+  if (campos.cnpj_cpf && !validarCNPJouCPF(campos.cnpj_cpf)) erros.cnpj_cpf = 'CNPJ ou CPF inválido.'
+  if (campos.email && !validarEmail(campos.email)) erros.email = 'E-mail inválido.'
+  if (campos.telefone && !validarTelefone(campos.telefone)) erros.telefone = 'Telefone inválido.'
+  if (campos.whatsapp && !validarTelefone(campos.whatsapp)) erros.whatsapp = 'WhatsApp inválido.'
+  if (campos.cep && !validarCEP(campos.cep)) erros.cep = 'CEP inválido.'
   return erros
 }
+
+const CONTATO_VAZIO = { nome: '', telefone: '', email: '' }
 
 export function FormularioCliente() {
   const { id } = useParams()
@@ -77,6 +70,12 @@ export function FormularioCliente() {
   const [salvando, setSalvando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
+  // Contatos multivalorados
+  const [contatos, setContatos] = useState<Contato[]>([])
+  const [novoContato, setNovoContato] = useState(CONTATO_VAZIO)
+  const [editandoContato, setEditandoContato] = useState<number | null>(null)
+  const [editContato, setEditContato] = useState(CONTATO_VAZIO)
+
   useEffect(() => {
     fetch('/api/setup/condicoes', { credentials: 'include' })
       .then((r) => r.json())
@@ -86,18 +85,20 @@ export function FormularioCliente() {
 
   useEffect(() => {
     if (!editando) return
-    fetch(`/api/clientes/${id}`, { credentials: 'include' })
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => {
+    Promise.all([
+      fetch(`/api/clientes/${id}`, { credentials: 'include' }).then((r) => r.ok ? r.json() : Promise.reject()),
+      fetch(`/api/clientes/${id}/contatos`, { credentials: 'include' }).then((r) => r.json()),
+    ])
+      .then(([data, cdata]) => {
         setCampos(paraFormulario(data.cliente))
         setCriadoEm(data.cliente.criado_em ?? null)
+        setContatos(cdata.contatos ?? [])
       })
       .catch(() => setErro('Não foi possível carregar o cliente.'))
       .finally(() => setCarregando(false))
   }, [id, editando])
 
   function atualizarCampo(campo: keyof CamposFormulario, valor: string) {
-    // Limpa erro do campo ao editar
     if (errosCampo[campo]) setErrosCampo((e) => ({ ...e, [campo]: undefined }))
     setCampos((atual) => ({ ...atual, [campo]: valor }))
   }
@@ -134,6 +135,41 @@ export function FormularioCliente() {
     }
   }
 
+  // ── Contatos ────────────────────────────────────────────────────────────────
+
+  async function adicionarContato() {
+    if (!novoContato.nome.trim() || !id) return
+    const res = await fetch(`/api/clientes/${id}/contatos`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(novoContato),
+    })
+    const d = await res.json()
+    if (res.ok) {
+      setContatos((prev) => [...prev, d.contato])
+      setNovoContato(CONTATO_VAZIO)
+    }
+  }
+
+  async function salvarEdicaoContato(cid: number) {
+    if (!editContato.nome.trim() || !id) return
+    await fetch(`/api/clientes/${id}/contatos/${cid}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(editContato),
+    })
+    setContatos((prev) => prev.map((c) => c.id === cid ? { ...c, ...editContato } : c))
+    setEditandoContato(null)
+  }
+
+  async function removerContato(cid: number) {
+    if (!id) return
+    await fetch(`/api/clientes/${id}/contatos/${cid}`, { method: 'DELETE', credentials: 'include' })
+    setContatos((prev) => prev.filter((c) => c.id !== cid))
+  }
+
   const nav = useNavegacaoRegistro('nav_clientes', id, '/clientes', '/editar')
 
   if (carregando) return <p>Carregando...</p>
@@ -161,9 +197,11 @@ export function FormularioCliente() {
           </span>
         )}
       </h2>
+
       <form onSubmit={handleSubmit}>
         <div className="grade-formulario">
 
+          {/* Linha 1: Razão social + Nome fantasia */}
           <div className="campo campo-largo">
             <label htmlFor="razao_social">Razão social *</label>
             <input
@@ -173,8 +211,7 @@ export function FormularioCliente() {
               required
             />
           </div>
-
-          <div className="campo">
+          <div className="campo campo-largo">
             <label htmlFor="nome_fantasia">Nome fantasia</label>
             <input
               id="nome_fantasia"
@@ -183,6 +220,7 @@ export function FormularioCliente() {
             />
           </div>
 
+          {/* Linha 2: CNPJ | E-mail | Telefone | WhatsApp */}
           <div className={`campo${ec.cnpj_cpf ? ' campo-invalido' : ''}`}>
             <label htmlFor="cnpj_cpf">CNPJ/CPF</label>
             <input
@@ -195,7 +233,6 @@ export function FormularioCliente() {
             />
             {ec.cnpj_cpf && <span className="campo-erro">{ec.cnpj_cpf}</span>}
           </div>
-
           <div className={`campo${ec.email ? ' campo-invalido' : ''}`}>
             <label htmlFor="email">E-mail</label>
             <input
@@ -208,7 +245,6 @@ export function FormularioCliente() {
             />
             {ec.email && <span className="campo-erro">{ec.email}</span>}
           </div>
-
           <div className={`campo${ec.telefone ? ' campo-invalido' : ''}`}>
             <label htmlFor="telefone">Telefone</label>
             <input
@@ -216,12 +252,11 @@ export function FormularioCliente() {
               value={campos.telefone ?? ''}
               onChange={(e) => atualizarCampo('telefone', mascaraTelefone(e.target.value))}
               onBlur={() => validarCampo('telefone')}
-              placeholder="(11) 99999-9999"
+              placeholder="(11) 9999-9999"
               maxLength={15}
             />
             {ec.telefone && <span className="campo-erro">{ec.telefone}</span>}
           </div>
-
           <div className={`campo${ec.whatsapp ? ' campo-invalido' : ''}`}>
             <label htmlFor="whatsapp">WhatsApp</label>
             <input
@@ -235,6 +270,7 @@ export function FormularioCliente() {
             {ec.whatsapp && <span className="campo-erro">{ec.whatsapp}</span>}
           </div>
 
+          {/* Linha 3: Endereço | Cidade | UF | CEP */}
           <div className="campo campo-largo">
             <label htmlFor="endereco">Endereço</label>
             <input
@@ -243,7 +279,6 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('endereco', e.target.value)}
             />
           </div>
-
           <div className="campo">
             <label htmlFor="cidade">Cidade</label>
             <input
@@ -252,8 +287,7 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('cidade', e.target.value)}
             />
           </div>
-
-          <div className="campo">
+          <div className="campo" style={{ maxWidth: '80px' }}>
             <label htmlFor="uf">UF</label>
             <input
               id="uf"
@@ -262,8 +296,7 @@ export function FormularioCliente() {
               onChange={(e) => atualizarCampo('uf', e.target.value.toUpperCase())}
             />
           </div>
-
-          <div className={`campo${ec.cep ? ' campo-invalido' : ''}`}>
+          <div className={`campo${ec.cep ? ' campo-invalido' : ''}`} style={{ maxWidth: '130px' }}>
             <label htmlFor="cep">CEP</label>
             <input
               id="cep"
@@ -276,15 +309,7 @@ export function FormularioCliente() {
             {ec.cep && <span className="campo-erro">{ec.cep}</span>}
           </div>
 
-          <div className="campo campo-largo">
-            <label htmlFor="observacoes">Observações</label>
-            <textarea
-              id="observacoes"
-              value={campos.observacoes ?? ''}
-              onChange={(e) => atualizarCampo('observacoes', e.target.value)}
-            />
-          </div>
-
+          {/* Linha 4: Condições | Observações */}
           <div className="campo campo-largo">
             <label htmlFor="condicoes_pagamento">Condições de pagamento padrão</label>
             <input
@@ -298,6 +323,16 @@ export function FormularioCliente() {
               {listaCondicoes.map((c) => <option key={c} value={c} />)}
             </datalist>
           </div>
+          <div className="campo campo-largo">
+            <label htmlFor="observacoes">Observações</label>
+            <textarea
+              id="observacoes"
+              rows={3}
+              value={campos.observacoes ?? ''}
+              onChange={(e) => atualizarCampo('observacoes', e.target.value)}
+            />
+          </div>
+
         </div>
 
         {erro && <p className="alerta-erro" role="alert">{erro}</p>}
@@ -311,6 +346,103 @@ export function FormularioCliente() {
           </button>
         </div>
       </form>
+
+      {/* ── Contatos ─────────────────────────────────────────────── */}
+      {editando && (
+        <div style={{ marginTop: '32px' }}>
+          <h3 style={{ fontSize: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '14px' }}>
+            Contatos
+          </h3>
+
+          {/* Formulário novo contato */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', alignItems: 'end', marginBottom: '12px' }}>
+            <div className="campo" style={{ margin: 0 }}>
+              <label>Nome *</label>
+              <input
+                placeholder="Nome do contato"
+                value={novoContato.nome}
+                onChange={(e) => setNovoContato((p) => ({ ...p, nome: e.target.value }))}
+              />
+            </div>
+            <div className="campo" style={{ margin: 0 }}>
+              <label>Telefone</label>
+              <input
+                placeholder="(11) 99999-9999"
+                value={novoContato.telefone}
+                onChange={(e) => setNovoContato((p) => ({ ...p, telefone: mascaraTelefone(e.target.value) }))}
+                maxLength={15}
+              />
+            </div>
+            <div className="campo" style={{ margin: 0 }}>
+              <label>E-mail</label>
+              <input
+                placeholder="email@contato.com"
+                value={novoContato.email}
+                onChange={(e) => setNovoContato((p) => ({ ...p, email: e.target.value }))}
+                className="sem-uppercase"
+              />
+            </div>
+            <button
+              className="botao"
+              type="button"
+              onClick={adicionarContato}
+              disabled={!novoContato.nome.trim()}
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              + Adicionar
+            </button>
+          </div>
+
+          {contatos.length > 0 && (
+            <div className="tabela-wrapper">
+              <table className="tabela">
+                <thead>
+                  <tr>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>E-mail</th>
+                    <th style={{ width: '110px' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {contatos.map((c) => (
+                    <tr key={c.id}>
+                      {editandoContato === c.id ? (
+                        <>
+                          <td><input value={editContato.nome} onChange={(e) => setEditContato((p) => ({ ...p, nome: e.target.value }))} /></td>
+                          <td><input value={editContato.telefone} onChange={(e) => setEditContato((p) => ({ ...p, telefone: mascaraTelefone(e.target.value) }))} maxLength={15} /></td>
+                          <td><input value={editContato.email} onChange={(e) => setEditContato((p) => ({ ...p, email: e.target.value }))} className="sem-uppercase" /></td>
+                          <td>
+                            <div className="acoes">
+                              <button className="botao-link" type="button" onClick={() => salvarEdicaoContato(c.id)}>Salvar</button>
+                              <button className="botao-link" type="button" onClick={() => setEditandoContato(null)}>Cancel.</button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td>{c.nome}</td>
+                          <td>{c.telefone ?? '—'}</td>
+                          <td>{c.email ?? '—'}</td>
+                          <td>
+                            <div className="acoes">
+                              <button className="botao-link" type="button" onClick={() => { setEditandoContato(c.id); setEditContato({ nome: c.nome, telefone: c.telefone ?? '', email: c.email ?? '' }) }}>Editar</button>
+                              <button className="botao-perigo" type="button" onClick={() => removerContato(c.id)}>Remover</button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {contatos.length === 0 && (
+            <p style={{ fontSize: '13px', color: 'var(--text)' }}>Nenhum contato cadastrado. Use o formulário acima para adicionar.</p>
+          )}
+        </div>
+      )}
     </section>
   )
 }

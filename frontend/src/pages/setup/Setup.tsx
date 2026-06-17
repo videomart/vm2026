@@ -10,6 +10,13 @@ type SetupData = {
   fator_markup_usd: string
   proposta_validade_dias: string
   observacoes_padrao: string
+  smtp_host: string
+  smtp_port: string
+  smtp_secure: boolean
+  smtp_user: string
+  smtp_pass: string
+  smtp_from: string
+  smtp_limite_hora: string
 }
 
 type Cotacao = { id: number; data: string; valor: string; fonte: string | null } | null
@@ -36,6 +43,13 @@ const SETUP_VAZIO: SetupData = {
   fator_markup_usd: '1.3',
   proposta_validade_dias: '30',
   observacoes_padrao: OBS_PADRAO,
+  smtp_host: '',
+  smtp_port: '465',
+  smtp_secure: true,
+  smtp_user: '',
+  smtp_pass: '',
+  smtp_from: '',
+  smtp_limite_hora: '100',
 }
 
 function paraForm(s: any): SetupData {
@@ -49,6 +63,13 @@ function paraForm(s: any): SetupData {
     fator_markup_usd: String(s.fator_markup_usd ?? '1.3'),
     proposta_validade_dias: String(s.proposta_validade_dias ?? '30'),
     observacoes_padrao: s.observacoes_padrao ?? OBS_PADRAO,
+    smtp_host: s.smtp_host ?? '',
+    smtp_port: String(s.smtp_port ?? '465'),
+    smtp_secure: Boolean(s.smtp_secure ?? true),
+    smtp_user: s.smtp_user ?? '',
+    smtp_pass: s.smtp_pass ?? '',
+    smtp_from: s.smtp_from ?? '',
+    smtp_limite_hora: String(s.smtp_limite_hora ?? '100'),
   }
 }
 
@@ -103,6 +124,9 @@ export function Setup() {
           ...campos,
           fator_markup_usd: Number(campos.fator_markup_usd),
           proposta_validade_dias: Number(campos.proposta_validade_dias),
+          smtp_port: Number(campos.smtp_port),
+          smtp_secure: campos.smtp_secure,
+          smtp_limite_hora: Number(campos.smtp_limite_hora),
         }),
       })
       const d = await res.json()
@@ -189,6 +213,70 @@ export function Setup() {
             />
             <span style={{ fontSize: '12px', color: 'var(--text)' }}>
               Preenchido automaticamente no campo Observações de novas propostas.
+            </span>
+          </div>
+        </div>
+
+        <h3 style={H3}>E-mail (SMTP)</h3>
+        <div className="grade-formulario">
+          <div className="campo campo-largo">
+            <label>Servidor SMTP</label>
+            <input
+              className="sem-uppercase"
+              value={campos.smtp_host}
+              onChange={(e) => atualizar('smtp_host', e.target.value)}
+              placeholder="smtp.hostinger.com"
+            />
+          </div>
+          <div className="campo" style={{ maxWidth: '120px' }}>
+            <label>Porta</label>
+            <input type="number" min="1" max="65535" value={campos.smtp_port} onChange={(e) => atualizar('smtp_port', e.target.value)} />
+          </div>
+          <div className="campo" style={{ maxWidth: '120px' }}>
+            <label>SSL/TLS</label>
+            <select value={campos.smtp_secure ? '1' : '0'} onChange={(e) => setCampos((c) => ({ ...c, smtp_secure: e.target.value === '1' }))}>
+              <option value="1">Sim (465)</option>
+              <option value="0">Não (587)</option>
+            </select>
+          </div>
+        </div>
+        <div className="grade-formulario">
+          <div className="campo campo-largo">
+            <label>Usuário / E-mail remetente</label>
+            <input
+              className="sem-uppercase"
+              value={campos.smtp_user}
+              onChange={(e) => atualizar('smtp_user', e.target.value)}
+              placeholder="envios@suaempresa.com.br"
+            />
+          </div>
+          <div className="campo campo-largo">
+            <label>Senha</label>
+            <input
+              type="password"
+              value={campos.smtp_pass}
+              onChange={(e) => atualizar('smtp_pass', e.target.value)}
+              placeholder="••••••••"
+              autoComplete="new-password"
+            />
+          </div>
+          <div className="campo campo-largo">
+            <label>Nome e endereço de exibição (From)</label>
+            <input
+              className="sem-uppercase"
+              value={campos.smtp_from}
+              onChange={(e) => atualizar('smtp_from', e.target.value)}
+              placeholder='Videomart Broadcast <envios@suaempresa.com.br>'
+            />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              Deve usar o mesmo domínio do usuário SMTP para evitar rejeição pelo servidor.
+            </span>
+          </div>
+          <div className="campo">
+            <label>Limite de envios por hora</label>
+            <input type="number" min="1" max="10000" value={campos.smtp_limite_hora} onChange={(e) => atualizar('smtp_limite_hora', e.target.value)} />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              Campanhas respeitam este limite adicionando intervalo entre envios.
             </span>
           </div>
         </div>

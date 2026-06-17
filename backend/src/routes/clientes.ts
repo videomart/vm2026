@@ -130,3 +130,38 @@ clientesRouter.post('/:id/reativar', async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM clientes WHERE id = ?', [req.params.id])
   res.json({ cliente: (rows as any[])[0] })
 })
+
+// ─── Contatos do cliente ───────────────────────────────────────────────────────
+
+clientesRouter.get('/:id/contatos', async (req, res) => {
+  const [rows] = await pool.query(
+    'SELECT id, nome, telefone, email FROM contatos WHERE cliente_id = ? AND ativo = 1 ORDER BY nome ASC',
+    [req.params.id],
+  )
+  res.json({ contatos: rows })
+})
+
+clientesRouter.post('/:id/contatos', async (req, res) => {
+  const { nome, telefone, email } = req.body
+  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' })
+  const [r] = await pool.query(
+    'INSERT INTO contatos (cliente_id, nome, telefone, email) VALUES (?, ?, ?, ?)',
+    [req.params.id, nome.trim(), telefone?.trim() || null, email?.trim() || null],
+  ) as any[]
+  res.status(201).json({ contato: { id: r.insertId, nome: nome.trim(), telefone: telefone?.trim() || null, email: email?.trim() || null } })
+})
+
+clientesRouter.put('/:id/contatos/:cid', async (req, res) => {
+  const { nome, telefone, email } = req.body
+  if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' })
+  await pool.query(
+    'UPDATE contatos SET nome = ?, telefone = ?, email = ? WHERE id = ? AND cliente_id = ?',
+    [nome.trim(), telefone?.trim() || null, email?.trim() || null, req.params.cid, req.params.id],
+  )
+  res.json({ ok: true })
+})
+
+clientesRouter.delete('/:id/contatos/:cid', async (req, res) => {
+  await pool.query('UPDATE contatos SET ativo = 0 WHERE id = ? AND cliente_id = ?', [req.params.cid, req.params.id])
+  res.json({ ok: true })
+})

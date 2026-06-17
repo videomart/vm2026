@@ -1,0 +1,34 @@
+-- Migração 006: campos SMTP e limite de e-mails/hora na tabela setup
+-- Rodar: docker exec -i vm2026-db-1 mysql -u vm2026 -ptroque_esta_senha vm2026 < db/migrations/006_smtp_setup.sql
+
+SET NAMES utf8mb4;
+
+DROP PROCEDURE IF EXISTS _mig006;
+DELIMITER //
+CREATE PROCEDURE _mig006()
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_host') THEN
+    ALTER TABLE setup ADD COLUMN smtp_host VARCHAR(150) DEFAULT NULL AFTER observacoes_padrao;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_port') THEN
+    ALTER TABLE setup ADD COLUMN smtp_port SMALLINT UNSIGNED DEFAULT NULL AFTER smtp_host;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_secure') THEN
+    ALTER TABLE setup ADD COLUMN smtp_secure TINYINT(1) DEFAULT NULL AFTER smtp_port;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_user') THEN
+    ALTER TABLE setup ADD COLUMN smtp_user VARCHAR(150) DEFAULT NULL AFTER smtp_secure;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_pass') THEN
+    ALTER TABLE setup ADD COLUMN smtp_pass VARCHAR(150) DEFAULT NULL AFTER smtp_user;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_from') THEN
+    ALTER TABLE setup ADD COLUMN smtp_from VARCHAR(200) DEFAULT NULL AFTER smtp_pass;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'setup' AND COLUMN_NAME = 'smtp_limite_hora') THEN
+    ALTER TABLE setup ADD COLUMN smtp_limite_hora SMALLINT UNSIGNED DEFAULT 100 AFTER smtp_from;
+  END IF;
+END //
+DELIMITER ;
+CALL _mig006();
+DROP PROCEDURE IF EXISTS _mig006;

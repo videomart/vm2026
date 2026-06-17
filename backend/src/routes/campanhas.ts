@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { pool } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
 import { requireAdmin } from '../auth/middleware.js'
-import { enviarEmail } from '../email.js'
+import { enviarCampanha } from '../email.js'
 
 export const campanhasRouter = Router()
 campanhasRouter.use(requireAuth)
@@ -155,19 +155,12 @@ campanhasRouter.post('/', requireAdmin, async (req: any, res) => {
     ) as any[]
     const campanhaId = r.insertId
 
-    // Dispara e-mails (sem travar a resposta)
-    const erros: string[] = []
-    for (const cliente of clientes) {
-      try {
-        await enviarEmail({
-          to: cliente.email,
-          subject: assunto.trim(),
-          html: corpo.trim(),
-        })
-      } catch (e: any) {
-        erros.push(`${cliente.email}: ${e.message}`)
-      }
-    }
+    // Dispara e-mails respeitando limite/hora configurado no setup
+    const { enviados, erros } = await enviarCampanha(
+      clientes.map((c: any) => ({ email: c.email, nome: c.nome })),
+      assunto.trim(),
+      corpo.trim(),
+    )
 
     // Marca como enviado
     await pool.query(
@@ -178,7 +171,7 @@ campanhasRouter.post('/', requireAdmin, async (req: any, res) => {
     res.json({
       ok: true,
       campanhaId,
-      total: clientes.length,
+      total: enviados,
       erros: erros.length ? erros : undefined,
     })
   } catch {

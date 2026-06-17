@@ -22,12 +22,15 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
       empresa_nome, empresa_cnpj, empresa_endereco,
       empresa_telefone, empresa_email, empresa_site,
       fator_markup_usd, proposta_validade_dias, observacoes_padrao,
+      smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from, smtp_limite_hora,
     } = req.body
     await pool.query(
       `UPDATE setup SET
          empresa_nome = ?, empresa_cnpj = ?, empresa_endereco = ?,
          empresa_telefone = ?, empresa_email = ?, empresa_site = ?,
-         fator_markup_usd = ?, proposta_validade_dias = ?, observacoes_padrao = ?
+         fator_markup_usd = ?, proposta_validade_dias = ?, observacoes_padrao = ?,
+         smtp_host = ?, smtp_port = ?, smtp_secure = ?, smtp_user = ?,
+         smtp_pass = ?, smtp_from = ?, smtp_limite_hora = ?
        WHERE id = 1`,
       [
         empresa_nome ?? 'Videomart Broadcast',
@@ -39,6 +42,13 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
         Number(fator_markup_usd) || 1.3,
         Number(proposta_validade_dias) || 30,
         observacoes_padrao ?? null,
+        smtp_host?.trim() || null,
+        smtp_port ? Number(smtp_port) : null,
+        smtp_secure != null ? (smtp_secure ? 1 : 0) : null,
+        smtp_user?.trim() || null,
+        smtp_pass?.trim() || null,
+        smtp_from?.trim() || null,
+        smtp_limite_hora ? Number(smtp_limite_hora) : 100,
       ],
     )
     const [rows] = await pool.query('SELECT * FROM setup WHERE id = 1')
