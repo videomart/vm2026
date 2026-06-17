@@ -6,11 +6,15 @@ import { formatarCNPJCPF, formatarTelefone, formatarData } from '../../utils/for
 import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
 import type { Cliente } from './types'
 
+type CategoriaCliente = { id: number; nome: string }
+
 export function ListaClientes() {
   const navigate = useNavigate()
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [busca, setBusca] = useState('')
   const [mostrarInativos, setMostrarInativos] = useState(false)
+  const [categoriaId, setCategoriaId] = useState('')
+  const [categorias, setCategorias] = useState<CategoriaCliente[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
@@ -27,6 +31,7 @@ export function ListaClientes() {
     const parametros = new URLSearchParams()
     if (busca.trim()) parametros.set('q', busca.trim())
     if (mostrarInativos) parametros.set('incluirInativos', '1')
+    if (categoriaId) parametros.set('categoria_cliente_id', categoriaId)
     fetch(`/api/clientes?${parametros.toString()}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => { setClientes(data.clientes); grid.resetar() })
@@ -34,7 +39,14 @@ export function ListaClientes() {
       .finally(() => setCarregando(false))
   }
 
-  useEffect(() => { carregar() }, [mostrarInativos]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    fetch('/api/categorias-cliente', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => setCategorias(d.categorias ?? []))
+      .catch(() => null)
+  }, [])
+
+  useEffect(() => { carregar() }, [mostrarInativos, categoriaId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function inativar(cliente: Cliente) {
     if (!confirm(`Inativar o cliente "${cliente.razao_social}"?`)) return
@@ -62,6 +74,14 @@ export function ListaClientes() {
           onChange={(e) => setBusca(e.target.value)}
         />
         <button className="botao-secundario" type="submit">Buscar</button>
+        <select
+          value={categoriaId}
+          onChange={(e) => setCategoriaId(e.target.value)}
+          style={{ padding: '0.4rem 0.6rem', borderRadius: 'var(--raio)', border: '1px solid var(--border)' }}
+        >
+          <option value="">Todas as categorias</option>
+          {categorias.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
         <label className="opcao-checkbox">
           <input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />
           Mostrar inativos
@@ -79,7 +99,6 @@ export function ListaClientes() {
               <thead>
                 <tr>
                   <th {...grid.th('razao_social')}>Razão social</th>
-                  <th {...grid.th('nome_fantasia')}>Nome fantasia</th>
                   <th {...grid.th('cnpj_cpf')}>CNPJ/CPF</th>
                   <th {...grid.th('telefone')}>Telefone</th>
                   <th {...grid.th('cidade')}>Cidade/UF</th>
@@ -93,7 +112,6 @@ export function ListaClientes() {
                 {grid.pagina_atual.map((cliente) => (
                   <tr key={cliente.id}>
                     <td>{cliente.razao_social}</td>
-                    <td>{cliente.nome_fantasia ?? '—'}</td>
                     <td>{cliente.cnpj_cpf ? formatarCNPJCPF(cliente.cnpj_cpf) : '—'}</td>
                     <td>{cliente.telefone ? formatarTelefone(cliente.telefone) : '—'}</td>
                     <td>{cliente.cidade ?? '—'}{cliente.uf ? `/${cliente.uf}` : ''}</td>

@@ -350,7 +350,7 @@ export function FormularioCliente() {
               id="observacoes"
               className="sem-uppercase"
               rows={1}
-              style={{ resize: 'vertical' }}
+              style={{ resize: 'vertical', minHeight: '38px' }}
               value={campos.observacoes ?? ''}
               onChange={(e) => atualizarCampo('observacoes', e.target.value)}
             />
@@ -386,7 +386,7 @@ export function FormularioCliente() {
 
       {/* ── Contatos ─────────────────────────────────────────────── */}
       {editando && (
-        <div style={{ marginTop: '32px' }}>
+        <div style={{ marginTop: '4px' }}>
           <h3 style={{ fontSize: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '14px' }}>
             Contatos
           </h3>

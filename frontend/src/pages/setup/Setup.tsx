@@ -237,8 +237,8 @@ export function Setup() {
           </div>
         </div>
 
-        <div className="grade-formulario">
-          <div className="campo campo-largo">
+        <div className="grade-formulario" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
+          <div className="campo">
             <label>Razão social</label>
             <input value={campos.empresa_nome} onChange={(e) => atualizar('empresa_nome', e.target.value)} required />
           </div>
@@ -246,13 +246,15 @@ export function Setup() {
             <label>CNPJ</label>
             <input value={campos.empresa_cnpj} onChange={(e) => atualizar('empresa_cnpj', e.target.value)} placeholder="00.000.000/0000-00" />
           </div>
-          <div className="campo campo-largo">
-            <label>Endereço</label>
-            <input value={campos.empresa_endereco} onChange={(e) => atualizar('empresa_endereco', e.target.value)} />
-          </div>
           <div className="campo">
             <label>Telefone</label>
             <input value={campos.empresa_telefone} onChange={(e) => atualizar('empresa_telefone', e.target.value)} />
+          </div>
+        </div>
+        <div className="grade-formulario" style={{ gridTemplateColumns: '2fr 1fr 1fr' }}>
+          <div className="campo">
+            <label>Endereço</label>
+            <input value={campos.empresa_endereco} onChange={(e) => atualizar('empresa_endereco', e.target.value)} />
           </div>
           <div className="campo">
             <label>E-mail</label>
@@ -264,11 +266,18 @@ export function Setup() {
           </div>
         </div>
 
-        <h3 style={H3}>Propostas</h3>
-        <div className="grade-formulario">
+        <h3 style={H3}>Propostas e precificação</h3>
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
           <div className="campo">
             <label>Validade padrão (dias)</label>
             <input type="number" min="0" step="1" value={campos.proposta_validade_dias} onChange={(e) => atualizar('proposta_validade_dias', e.target.value)} />
+          </div>
+          <div className="campo">
+            <label>Fator de markup sobre preço USD</label>
+            <input type="number" min="1" step="0.01" value={campos.fator_markup_usd} onChange={(e) => atualizar('fator_markup_usd', e.target.value)} />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              Preço sugerido = preço USD × cotação do dia × fator. Ex.: 1,30 = 30% de margem.
+            </span>
           </div>
         </div>
         <div className="grade-formulario">
@@ -276,7 +285,7 @@ export function Setup() {
             <label>Observações padrão das propostas</label>
             <textarea
               className="sem-uppercase"
-              rows={12}
+              rows={6}
               value={campos.observacoes_padrao}
               onChange={(e) => atualizar('observacoes_padrao', e.target.value)}
             />
@@ -287,8 +296,8 @@ export function Setup() {
         </div>
 
         <h3 style={H3}>E-mail (SMTP)</h3>
-        <div className="grade-formulario">
-          <div className="campo campo-largo">
+        <div className="grade-formulario" style={{ gridTemplateColumns: '2fr 90px 110px 1fr' }}>
+          <div className="campo">
             <label>Servidor SMTP</label>
             <input
               className="sem-uppercase"
@@ -297,20 +306,24 @@ export function Setup() {
               placeholder="smtp.hostinger.com"
             />
           </div>
-          <div className="campo" style={{ maxWidth: '120px' }}>
+          <div className="campo">
             <label>Porta</label>
             <input type="number" min="1" max="65535" value={campos.smtp_port} onChange={(e) => atualizar('smtp_port', e.target.value)} />
           </div>
-          <div className="campo" style={{ maxWidth: '120px' }}>
+          <div className="campo">
             <label>SSL/TLS</label>
             <select value={campos.smtp_secure ? '1' : '0'} onChange={(e) => setCampos((c) => ({ ...c, smtp_secure: e.target.value === '1' }))}>
               <option value="1">Sim (465)</option>
               <option value="0">Não (587)</option>
             </select>
           </div>
+          <div className="campo">
+            <label>Limite de envios/hora</label>
+            <input type="number" min="1" max="10000" value={campos.smtp_limite_hora} onChange={(e) => atualizar('smtp_limite_hora', e.target.value)} />
+          </div>
         </div>
-        <div className="grade-formulario">
-          <div className="campo campo-largo">
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
+          <div className="campo">
             <label>Usuário / E-mail remetente</label>
             <input
               className="sem-uppercase"
@@ -319,7 +332,7 @@ export function Setup() {
               placeholder="envios@suaempresa.com.br"
             />
           </div>
-          <div className="campo campo-largo">
+          <div className="campo">
             <label>Senha</label>
             <input
               type="password"
@@ -329,6 +342,8 @@ export function Setup() {
               autoComplete="new-password"
             />
           </div>
+        </div>
+        <div className="grade-formulario">
           <div className="campo campo-largo">
             <label>Nome e endereço de exibição (From)</label>
             <input
@@ -338,25 +353,7 @@ export function Setup() {
               placeholder='Videomart Broadcast <envios@suaempresa.com.br>'
             />
             <span style={{ fontSize: '12px', color: 'var(--text)' }}>
-              Deve usar o mesmo domínio do usuário SMTP para evitar rejeição pelo servidor.
-            </span>
-          </div>
-          <div className="campo">
-            <label>Limite de envios por hora</label>
-            <input type="number" min="1" max="10000" value={campos.smtp_limite_hora} onChange={(e) => atualizar('smtp_limite_hora', e.target.value)} />
-            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
-              Campanhas respeitam este limite adicionando intervalo entre envios.
-            </span>
-          </div>
-        </div>
-
-        <h3 style={H3}>Precificação em dólar</h3>
-        <div className="grade-formulario">
-          <div className="campo">
-            <label>Fator de markup sobre preço USD</label>
-            <input type="number" min="1" step="0.01" value={campos.fator_markup_usd} onChange={(e) => atualizar('fator_markup_usd', e.target.value)} />
-            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
-              Preço sugerido = preço USD × cotação do dia × fator. Ex.: 1,30 = 30% de margem.
+              Deve usar o mesmo domínio do usuário SMTP para evitar rejeição pelo servidor. Campanhas respeitam o limite de envios/hora configurado acima.
             </span>
           </div>
         </div>
