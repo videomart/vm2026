@@ -12,6 +12,7 @@ export function NovaCampanha() {
   const [grupoId, setGrupoId] = useState('')
   const [assunto, setAssunto] = useState('')
   const [corpo, setCorpo] = useState('')
+  const [incluirContatos, setIncluirContatos] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState<{ total: number; erros?: string[] } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
@@ -43,7 +44,12 @@ export function NovaCampanha() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ grupo_id: Number(grupoId), assunto: assunto.trim(), corpo: corpo.trim() }),
+        body: JSON.stringify({
+          grupo_id: Number(grupoId),
+          assunto: assunto.trim(),
+          corpo: corpo.trim(),
+          incluir_contatos: incluirContatos,
+        }),
       })
       const d = await res.json()
       if (!res.ok) { setErro(d.erro ?? 'Erro ao enviar.'); return }
@@ -93,6 +99,10 @@ export function NovaCampanha() {
                 Este grupo não tem clientes com e-mail cadastrado.
               </span>
             )}
+            <label className="opcao-checkbox" style={{ marginTop: '8px' }}>
+              <input type="checkbox" checked={incluirContatos} onChange={(e) => setIncluirContatos(e.target.checked)} />
+              Incluir contatos das empresas
+            </label>
           </div>
           <div className="campo">
             <label htmlFor="template">Carregar template</label>

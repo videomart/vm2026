@@ -4,6 +4,7 @@ type Grupo = { id: number; nome: string; descricao: string | null; total_cliente
 type ClienteGrupo = { id: number; nome: string; email: string | null }
 type ClienteBusca = { id: number; razao_social: string; email: string | null }
 type CategoriaCliente = { id: number; nome: string }
+type EmailExtra = { id: number; email: string; nome: string | null }
 
 export function GruposEnvio() {
   const [grupos, setGrupos] = useState<Grupo[]>([])
@@ -20,6 +21,9 @@ export function GruposEnvio() {
   const [categorias, setCategorias] = useState<CategoriaCliente[]>([])
   const [categoriaSelecionada, setCategoriaSelecionada] = useState<Record<number, string>>({})
   const [adicionandoCategoria, setAdicionandoCategoria] = useState<number | null>(null)
+  const [emailsExtra, setEmailsExtra] = useState<EmailExtra[]>([])
+  const [textoImportacao, setTextoImportacao] = useState('')
+  const [importando, setImportando] = useState(false)
   const buscaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -55,15 +59,62 @@ export function GruposEnvio() {
   }, [busca, clientesGrupo])
 
   async function abrirGrupo(id: number) {
-    if (grupoAberto === id) { setGrupoAberto(null); setClientesGrupo([]); return }
+    if (grupoAberto === id) { setGrupoAberto(null); setClientesGrupo([]); setEmailsExtra([]); return }
     try {
       const d = await fetch(`/api/campanhas/grupos/${id}`, { credentials: 'include' }).then((r) => r.json())
       setClientesGrupo(d.clientes ?? [])
+      setEmailsExtra(d.emailsExtra ?? [])
       setGrupoAberto(id)
       setBusca('')
       setResultadoBusca([])
+      setTextoImportacao('')
     } catch {
       setErro('Erro ao carregar clientes do grupo.')
+    }
+  }
+
+  async function importarEmails(grupoId: number) {
+    if (!textoImportacao.trim()) return
+    setImportando(true)
+    setErro(null)
+    setMsg(null)
+    try {
+      const res = await fetch(`/api/campanhas/grupos/${grupoId}/emails-extra`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ texto: textoImportacao }),
+      })
+      const d = await res.json()
+      if (!res.ok) { setErro(d.erro ?? 'Erro ao importar e-mails.'); return }
+      const novosTotal = (d.emailsExtra ?? []).length - emailsExtra.length
+      setEmailsExtra(d.emailsExtra ?? [])
+      setGrupos((prev) => prev.map((g) => g.id === grupoId ? { ...g, total_clientes: g.total_clientes + Math.max(0, novosTotal) } : g))
+      setTextoImportacao('')
+      setMsg(`${d.total_encontrados} e-mail(s) encontrado(s) no texto.`)
+    } catch {
+      setErro('Erro de conexão ao importar e-mails.')
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  function onArquivoTxt(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setTextoImportacao((prev) => prev ? `${prev}\n${reader.result}` : String(reader.result))
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
+  async function removerEmailExtra(grupoId: number, emailId: number) {
+    try {
+      await fetch(`/api/campanhas/grupos/${grupoId}/emails-extra/${emailId}`, { method: 'DELETE', credentials: 'include' })
+      setEmailsExtra((prev) => prev.filter((e) => e.id !== emailId))
+      setGrupos((prev) => prev.map((g) => g.id === grupoId ? { ...g, total_clientes: Math.max(0, g.total_clientes - 1) } : g))
+    } catch {
+      setErro('Erro ao remover e-mail.')
     }
   }
 
@@ -263,6 +314,62 @@ export function GruposEnvio() {
               )}
               {busca && !buscando && resultadoBusca.length === 0 && (
                 <p style={{ fontSize: '12px', color: 'var(--text)', marginBottom: '10px' }}>Nenhum cliente encontrado.</p>
+              )}
+
+              {/* Importar lista de e-mails (copy/paste ou arquivo .txt) */}
+              <div style={{ margin: '16px 0', padding: '12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                  Importar lista de e-mails
+                </label>
+                <textarea
+                  className="sem-uppercase"
+                  rows={3}
+                  placeholder="Cole e-mails separados por vírgula, espaço ou quebra de linha..."
+                  value={textoImportacao}
+                  onChange={(e) => setTextoImportacao(e.target.value)}
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+                <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+                  <label className="botao-secundario" style={{ cursor: 'pointer', fontSize: '12px', padding: '6px 12px' }}>
+                    Escolher arquivo .txt
+                    <input type="file" accept=".txt" style={{ display: 'none' }} onChange={onArquivoTxt} />
+                  </label>
+                  <span style={{ flex: 1 }} />
+                  <button
+                    className="botao"
+                    type="button"
+                    disabled={!textoImportacao.trim() || importando}
+                    onClick={() => importarEmails(g.id)}
+                  >
+                    {importando ? 'Importando...' : 'Importar e-mails'}
+                  </button>
+                </div>
+              </div>
+
+              {/* E-mails avulsos importados */}
+              {emailsExtra.length > 0 && (
+                <div className="tabela-wrapper" style={{ marginBottom: '16px' }}>
+                  <table className="tabela">
+                    <thead>
+                      <tr>
+                        <th>E-mail importado</th>
+                        <th style={{ width: '80px' }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {emailsExtra.map((e) => (
+                        <tr key={e.id}>
+                          <td>{e.email}</td>
+                          <td>
+                            <button className="botao-perigo" type="button" onClick={() => removerEmailExtra(g.id, e.id)}>
+                              Remover
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {/* Tabela de clientes do grupo */}

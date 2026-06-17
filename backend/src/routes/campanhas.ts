@@ -13,9 +13,10 @@ campanhasRouter.get('/grupos', async (_req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT g.id, g.nome, g.descricao, g.criado_em,
-             COUNT(gc.cliente_id) AS total_clientes
+             COUNT(DISTINCT gc.cliente_id) + COUNT(DISTINCT ge.id) AS total_clientes
       FROM grupos_envio g
       LEFT JOIN grupo_clientes gc ON gc.grupo_id = g.id
+      LEFT JOIN grupo_emails_extra ge ON ge.grupo_id = g.id
       GROUP BY g.id
       ORDER BY g.nome ASC
     `)
@@ -39,9 +40,55 @@ campanhasRouter.get('/grupos/:id', async (req, res) => {
       ORDER BY c.razao_social ASC
     `, [req.params.id])
 
-    res.json({ grupo, clientes })
+    const [emailsExtra] = await pool.query(`
+      SELECT id, email, nome FROM grupo_emails_extra WHERE grupo_id = ? ORDER BY email ASC
+    `, [req.params.id])
+
+    res.json({ grupo, clientes, emailsExtra })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar grupo.' })
+  }
+})
+
+// E-mails avulsos (importação por texto/arquivo) ───────────────────────────────
+
+campanhasRouter.post('/grupos/:id/emails-extra', requireAdmin, async (req, res) => {
+  try {
+    const { texto } = req.body as { texto: string }
+    if (!texto?.trim()) return res.status(400).json({ erro: 'Informe ao menos um e-mail.' })
+
+    const regexEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+    const encontrados = texto.match(regexEmail) ?? []
+    const unicos = [...new Set(encontrados.map((e) => e.toLowerCase().trim()))]
+
+    if (!unicos.length) return res.status(400).json({ erro: 'Nenhum e-mail válido encontrado no texto.' })
+
+    const valores = unicos.map((email) => [Number(req.params.id), email])
+    await pool.query(
+      'INSERT IGNORE INTO grupo_emails_extra (grupo_id, email) VALUES ?',
+      [valores],
+    )
+
+    const [rows] = await pool.query(
+      'SELECT id, email, nome FROM grupo_emails_extra WHERE grupo_id = ? ORDER BY email ASC',
+      [req.params.id],
+    )
+
+    res.json({ ok: true, total_encontrados: unicos.length, emailsExtra: rows })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao importar e-mails.' })
+  }
+})
+
+campanhasRouter.delete('/grupos/:id/emails-extra/:emailId', requireAdmin, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM grupo_emails_extra WHERE id = ? AND grupo_id = ?',
+      [req.params.emailId, req.params.id],
+    )
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao remover e-mail.' })
   }
 })
 
@@ -133,20 +180,63 @@ campanhasRouter.get('/', async (_req, res) => {
 
 campanhasRouter.post('/', requireAdmin, async (req: any, res) => {
   try {
-    const { grupo_id, assunto, corpo } = req.body
+    const { grupo_id, assunto, corpo, incluir_contatos } = req.body
     if (!grupo_id || !assunto?.trim() || !corpo?.trim())
       return res.status(400).json({ erro: 'grupo_id, assunto e corpo são obrigatórios.' })
 
     // Busca clientes do grupo que têm e-mail
-    const [clientes] = await pool.query(`
+    const [clientesRows] = await pool.query(`
       SELECT c.id, c.razao_social AS nome, c.email
       FROM grupo_clientes gc
       JOIN clientes c ON c.id = gc.cliente_id
       WHERE gc.grupo_id = ? AND c.email IS NOT NULL AND c.email != '' AND c.ativo = 1
     `, [grupo_id]) as any[][]
 
+    let clientes = clientesRows as any[]
+
+    if (incluir_contatos) {
+      const [idsClientesGrupo] = await pool.query(`
+        SELECT c.id, c.razao_social AS nome
+        FROM grupo_clientes gc
+        JOIN clientes c ON c.id = gc.cliente_id
+        WHERE gc.grupo_id = ? AND c.ativo = 1
+      `, [grupo_id]) as any[][]
+
+      if ((idsClientesGrupo as any[]).length) {
+        const [contatos] = await pool.query(`
+          SELECT ct.cliente_id, ct.email
+          FROM contatos ct
+          WHERE ct.cliente_id IN (?) AND ct.ativo = 1 AND ct.email IS NOT NULL AND ct.email != ''
+        `, [(idsClientesGrupo as any[]).map((c) => c.id)]) as any[][]
+
+        const nomePorCliente = new Map((idsClientesGrupo as any[]).map((c) => [c.id, c.nome]))
+        const extras = (contatos as any[]).map((ct) => ({
+          id: ct.cliente_id,
+          nome: nomePorCliente.get(ct.cliente_id),
+          email: ct.email,
+        }))
+        clientes = [...clientes, ...extras]
+      }
+    }
+
+    // E-mails avulsos importados (texto/arquivo, sem cliente vinculado)
+    const [emailsExtra] = await pool.query(
+      'SELECT email, nome FROM grupo_emails_extra WHERE grupo_id = ?',
+      [grupo_id],
+    ) as any[][]
+    clientes = [...clientes, ...(emailsExtra as any[]).map((e) => ({ id: null, nome: e.nome ?? e.email, email: e.email }))]
+
+    // remove duplicados por e-mail (case-insensitive)
+    const vistos = new Set<string>()
+    clientes = clientes.filter((c) => {
+      const chave = String(c.email).toLowerCase().trim()
+      if (vistos.has(chave)) return false
+      vistos.add(chave)
+      return true
+    })
+
     if (!clientes.length)
-      return res.status(400).json({ erro: 'Nenhum cliente com e-mail neste grupo.' })
+      return res.status(400).json({ erro: 'Nenhum destinatário com e-mail neste grupo.' })
 
     // Registra campanha
     const [r] = await pool.query(
