@@ -229,6 +229,14 @@ leadsRouter.put('/:id', async (req, res) => {
   res.json({ lead: (rows as any[])[0] })
 })
 
+leadsRouter.delete('/:id', async (req, res) => {
+  const [resultado] = await pool.query('DELETE FROM leads WHERE id = ?', [req.params.id])
+  if ((resultado as any).affectedRows === 0) {
+    return res.status(404).json({ erro: 'Lead não encontrado.' })
+  }
+  res.status(204).end()
+})
+
 leadsRouter.post('/:id/assumir', async (req, res) => {
   const [resultado] = await pool.query(
     `UPDATE leads SET vendedor_id = ?, status = IF(status = 'novo', 'em_contato', status) WHERE id = ?`,

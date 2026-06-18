@@ -62,6 +62,12 @@ export function ListaLeads() {
     if (res.ok) carregar()
   }
 
+  async function remover(lead: Lead) {
+    if (!confirm(`Remover o lead "${lead.nome_empresa ?? lead.contato ?? lead.id}"? Esta ação não pode ser desfeita.`)) return
+    const res = await fetch(`/api/leads/${lead.id}`, { method: 'DELETE', credentials: 'include' })
+    if (res.ok) carregar()
+  }
+
   return (
     <section>
       <div className="cabecalho-secao">
@@ -138,6 +144,7 @@ export function ListaLeads() {
                         {!l.vendedor_id && (
                           <button className="botao-secundario" type="button" onClick={() => assumir(l)}>Assumir</button>
                         )}
+                        <button className="botao-perigo" type="button" onClick={() => remover(l)}>Remover</button>
                       </div>
                     </td>
                   </tr>
