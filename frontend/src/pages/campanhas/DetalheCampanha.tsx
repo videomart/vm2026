@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { formatarData } from '../../utils/formatar'
 
 type StatusEnvio = 'pendente' | 'enviado' | 'erro'

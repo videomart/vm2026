@@ -70,13 +70,13 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
   if (!editor) return null
 
   function ativo(nome: string, attrs?: Record<string, unknown>) {
-    return editor.isActive(nome, attrs) ? ' ativo' : ''
+    return editor!.isActive(nome, attrs) ? ' ativo' : ''
   }
 
   function inserirLink() {
     const url = window.prompt('URL do link:')
-    if (url) editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
-    else editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    if (url) editor!.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+    else editor!.chain().focus().extendMarkRange('link').unsetLink().run()
   }
 
   return (

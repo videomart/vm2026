@@ -1,5 +1,5 @@
 import { Router } from 'express'
-import { pool } from '../db'
+import { pool } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
 
 export const produtosRouter = Router()
