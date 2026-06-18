@@ -588,10 +588,19 @@ export function FormularioProposta() {
               ✉ Enviar por e-mail
             </button>
             {(() => {
-              const link = linkWhatsApp(
-                proposta.cliente_whatsapp || proposta.cliente_telefone,
-                `Olá, segue o link da proposta comercial #${proposta.id}: ${window.location.origin}/propostas/${proposta.id}/imprimir`,
-              )
+              const nomeCliente = proposta.cliente_nome?.split(' ')[0] ?? ''
+              const mensagem = [
+                `Olá${nomeCliente ? ', ' + nomeCliente : ''}!`,
+                `Segue a Proposta Comercial #${proposta.id} da Videomart Broadcast.`,
+                ``,
+                `Para visualizar e baixar o PDF, acesse o link abaixo e clique em "Imprimir / Salvar PDF":`,
+                `${window.location.origin}/propostas/${proposta.id}/imprimir`,
+                ``,
+                `Qualquer dúvida, estou à disposição.`,
+                proposta.vendedor_nome ? `— ${proposta.vendedor_nome}` : '',
+              ].filter(Boolean).join('\n')
+
+              const link = linkWhatsApp(proposta.cliente_whatsapp || proposta.cliente_telefone, mensagem)
               return link ? (
                 <a className="botao-secundario" href={link} target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}>
                   📱 Enviar por WhatsApp
