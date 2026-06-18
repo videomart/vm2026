@@ -15,6 +15,7 @@ import { categoriasRouter } from './routes/categorias.js'
 import { categoriasClienteRouter } from './routes/categoriasCliente.js'
 import { templatesEmailRouter } from './routes/templatesEmail.js'
 import { campanhasRouter } from './routes/campanhas.js'
+import { contasReceberRouter } from './routes/contasReceber.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -37,6 +38,7 @@ app.use('/api/categorias', categoriasRouter)
 app.use('/api/categorias-cliente', categoriasClienteRouter)
 app.use('/api/templates-email', templatesEmailRouter)
 app.use('/api/campanhas', campanhasRouter)
+app.use('/api/contas-receber', contasReceberRouter)
 
 app.get('/api/health', async (_req, res) => {
   try {

@@ -23,6 +23,7 @@ import { ListaCampanhas } from './pages/campanhas/ListaCampanhas'
 import { NovaCampanha } from './pages/campanhas/NovaCampanha'
 import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
+import { ListaContasReceber } from './pages/contasReceber/ListaContasReceber'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -116,6 +117,7 @@ function App() {
           <NavLink to="/clientes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Clientes</NavLink>
           <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
           <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
+          <NavLink to="/contas-receber" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a receber</NavLink>
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
           <NavLink to="/campanhas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>E-mails</NavLink>
           {usuario.papel === 'admin' && (
@@ -163,6 +165,7 @@ function App() {
           <Route path="/propostas" element={<ListaPropostas />} />
           <Route path="/propostas/nova" element={<FormularioProposta />} />
           <Route path="/propostas/:id" element={<FormularioProposta />} />
+          <Route path="/contas-receber" element={<ListaContasReceber />} />
           <Route path="/leads" element={<ListaLeads />} />
           <Route path="/leads/novo" element={<FormularioLead />} />
           <Route path="/leads/:id" element={<FormularioLead />} />
