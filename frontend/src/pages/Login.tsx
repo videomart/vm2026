@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 export type Usuario = {
   id: number
@@ -79,6 +80,9 @@ export function Login({ onLogin }: LoginProps) {
           <button className="botao" type="submit" disabled={enviando} style={{ width: '100%' }}>
             {enviando ? 'Entrando...' : 'Entrar'}
           </button>
+          <Link to="/esqueci-senha" style={{ display: 'block', textAlign: 'center', marginTop: '12px', fontSize: '13px' }}>
+            Esqueci minha senha
+          </Link>
         </form>
       </div>
     </div>

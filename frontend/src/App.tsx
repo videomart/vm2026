@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { Login } from './pages/Login'
 import type { Usuario } from './pages/Login'
+import { EsqueciSenha } from './pages/EsqueciSenha'
+import { RedefinirSenha } from './pages/RedefinirSenha'
 import { Dashboard } from './pages/dashboard/Dashboard'
 import { ListaClientes } from './pages/clientes/ListaClientes'
 import { FormularioCliente } from './pages/clientes/FormularioCliente'
@@ -76,6 +78,8 @@ function App() {
   }
 
   if (status === 'deslogado' || !usuario) {
+    if (location.pathname === '/esqueci-senha') return <EsqueciSenha />
+    if (location.pathname === '/redefinir-senha') return <RedefinirSenha />
     return <Login onLogin={handleLogin} />
   }
 
