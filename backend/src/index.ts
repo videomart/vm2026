@@ -1,6 +1,8 @@
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
+import fs from 'node:fs'
+import path from 'node:path'
 import { pool } from './db.js'
 import { authRouter } from './routes/auth.js'
 import { clientesRouter } from './routes/clientes.js'
@@ -50,6 +52,19 @@ app.get('/api/health', async (_req, res) => {
     res.status(503).json({ status: 'ok', database: `falha na conexão: ${(err as Error).message}` })
   }
 })
+
+// Em produção, o build do frontend é copiado para ./public (ver Dockerfile.prod) e
+// servido pelo próprio Express — evita precisar de um container/proxy separado para o
+// frontend. Em desenvolvimento essa pasta não existe e o bloco é ignorado (o frontend
+// roda à parte via Vite dev server).
+const pastaFrontend = path.join(import.meta.dirname, 'public')
+if (fs.existsSync(pastaFrontend)) {
+  app.use(express.static(pastaFrontend))
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next()
+    res.sendFile(path.join(pastaFrontend, 'index.html'))
+  })
+}
 
 app.listen(port, () => {
   console.log(`vm2026 backend ouvindo na porta ${port}`)

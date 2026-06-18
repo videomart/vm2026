@@ -1,30 +1,18 @@
+# Esta VPS já hospeda outro sistema (tvplay-web) com nginx-proxy + acme-companion
+# rodando nas portas 80/443. Em vez de subir nosso próprio Nginx/certbot, conectamos
+# nossos containers à rede do nginx-proxy existente e deixamos ele detectar e gerar
+# o virtual host + certificado Let's Encrypt automaticamente via variáveis de ambiente
+# (VIRTUAL_HOST / LETSENCRYPT_HOST). Ver DEPLOY.md para o passo a passo completo.
+#
+# Build a partir da RAIZ do projeto (não de ./backend) — o backend/Dockerfile.prod
+# também empacota o build do frontend e o serve via Express (express.static),
+# evitando o problema de rotear /api e / para containers diferentes no mesmo domínio.
+
 services:
-  proxy:
-    image: nginx:1.27-alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/certs:/etc/letsencrypt:ro
-      - ./nginx/htpasswd:/etc/nginx/htpasswd:ro
-      - ./certbot-webroot:/var/www/certbot:ro
-    depends_on:
-      - frontend
-      - backend
-      - phpmyadmin
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile.prod
-    restart: unless-stopped
-
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: backend/Dockerfile.prod
     environment:
       PORT: 3001
       DB_HOST: db
@@ -43,8 +31,14 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       FRONTEND_URL: ${FRONTEND_URL}
+      VIRTUAL_HOST: ${DOMINIO}
+      LETSENCRYPT_HOST: ${DOMINIO}
+      VIRTUAL_PORT: 3001
     depends_on:
       - db
+    networks:
+      - default
+      - tvplay-web_default
     restart: unless-stopped
 
   db:
@@ -58,18 +52,31 @@ services:
     volumes:
       - db_data:/var/lib/mysql
     restart: unless-stopped
-    # Sem "ports" aqui: o MySQL não deve ficar exposto à internet, só acessível
-    # pela rede interna do compose (frontend/backend/phpmyadmin já alcançam via "db").
+    # Sem "ports": o MySQL não deve ficar exposto à internet, só acessível pela
+    # rede interna do compose. Também NÃO entra na rede tvplay-web_default —
+    # fica isolado, só "backend" e "phpmyadmin" o alcançam via nome "db".
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     environment:
       PMA_HOST: db
-      PMA_ABSOLUTE_URI: https://${DOMINIO}/phpmyadmin/
+      VIRTUAL_HOST: phpmyadmin-vm2026.${DOMINIO_BASE}
+      LETSENCRYPT_HOST: phpmyadmin-vm2026.${DOMINIO_BASE}
+      VIRTUAL_PORT: 80
     depends_on:
       - db
+    networks:
+      - default
+      - tvplay-web_default
     restart: unless-stopped
-    # Sem "ports": só acessível via proxy Nginx, atrás de auth_basic (ver nginx/conf.d).
+    # Subdomínio próprio (não path) — nginx-proxy roteia por Host de forma confiável,
+    # diferente de VIRTUAL_PATH para containers diferentes no mesmo host. Sem auth_basic
+    # própria aqui (não temos Nginx nosso) — proteger com senha forte do MySQL/phpMyAdmin
+    # e considerar restringir por firewall/IP se exposto à internet por muito tempo.
+
+networks:
+  tvplay-web_default:
+    external: true
 
 volumes:
   db_data:
