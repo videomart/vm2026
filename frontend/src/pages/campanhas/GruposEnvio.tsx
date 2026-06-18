@@ -24,6 +24,8 @@ export function GruposEnvio() {
   const [emailsExtra, setEmailsExtra] = useState<EmailExtra[]>([])
   const [textoImportacao, setTextoImportacao] = useState('')
   const [importando, setImportando] = useState(false)
+  const [termoInteresse, setTermoInteresse] = useState<Record<number, string>>({})
+  const [adicionandoInteresse, setAdicionandoInteresse] = useState<number | null>(null)
   const buscaTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -199,6 +201,36 @@ export function GruposEnvio() {
     }
   }
 
+  async function adicionarPorInteresse(grupoId: number) {
+    const termo = (termoInteresse[grupoId] ?? '').trim()
+    if (!termo) return
+    setAdicionandoInteresse(grupoId)
+    setErro(null)
+    try {
+      const r = await fetch(`/api/campanhas/clientes-por-interesse?q=${encodeURIComponent(termo)}`, { credentials: 'include' })
+      const d = await r.json()
+      if (!r.ok) { setErro(d.erro ?? 'Erro ao buscar clientes por interesse.'); return }
+      const candidatos: { id: number; nome: string; email: string }[] = (d.clientes ?? []).filter((c: any) => c.email)
+      if (!candidatos.length) { setErro(`Nenhum cliente comprou ou demonstrou interesse em "${termo}".`); return }
+      const idsNoGrupo = new Set(clientesGrupo.map((c) => c.id))
+      const novos = candidatos.filter((c) => !idsNoGrupo.has(c.id))
+      if (!novos.length) { setMsg(`Todos os ${candidatos.length} cliente(s) encontrado(s) já estão no grupo.`); return }
+      await fetch(`/api/campanhas/grupos/${grupoId}/clientes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ cliente_ids: novos.map((c) => c.id) }),
+      })
+      setClientesGrupo((prev) => [...prev, ...novos.map((c) => ({ id: c.id, nome: c.nome, email: c.email }))].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+      setGrupos((prev) => prev.map((g) => g.id === grupoId ? { ...g, total_clientes: g.total_clientes + novos.length } : g))
+      setMsg(`${novos.length} cliente(s) adicionado(s) (encontrados ${candidatos.length} para "${termo}").`)
+    } catch {
+      setErro('Erro ao buscar clientes por interesse.')
+    } finally {
+      setAdicionandoInteresse(null)
+    }
+  }
+
   async function removerCliente(grupoId: number, clienteId: number) {
     try {
       await fetch(`/api/campanhas/grupos/${grupoId}/clientes/${clienteId}`, { method: 'DELETE', credentials: 'include' })
@@ -278,6 +310,31 @@ export function GruposEnvio() {
                   onClick={() => adicionarCategoria(g.id)}
                 >
                   {adicionandoCategoria === g.id ? 'Adicionando...' : '+ Adicionar todos'}
+                </button>
+              </div>
+
+              {/* Adicionar clientes que compraram ou se interessaram por um produto/marca */}
+              <div style={{ display: 'flex', gap: '8px', margin: '12px 0', alignItems: 'flex-end' }}>
+                <div className="campo" style={{ margin: 0, flex: 1 }}>
+                  <label>Adicionar por produto/marca comprado ou de interesse</label>
+                  <input
+                    className="sem-uppercase"
+                    placeholder="Ex.: TVPLAY, VIDEOMART..."
+                    value={termoInteresse[g.id] ?? ''}
+                    onChange={(e) => setTermoInteresse((prev) => ({ ...prev, [g.id]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); adicionarPorInteresse(g.id) } }}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text)' }}>
+                    Busca clientes com propostas contendo o termo (compraram) e leads que mencionam o termo (interessados).
+                  </span>
+                </div>
+                <button
+                  className="botao-secundario"
+                  type="button"
+                  disabled={!termoInteresse[g.id]?.trim() || adicionandoInteresse === g.id}
+                  onClick={() => adicionarPorInteresse(g.id)}
+                >
+                  {adicionandoInteresse === g.id ? 'Buscando...' : '+ Adicionar todos'}
                 </button>
               </div>
 

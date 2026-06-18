@@ -92,6 +92,48 @@ campanhasRouter.delete('/grupos/:id/emails-extra/:emailId', requireAdmin, async 
   }
 })
 
+// Busca clientes que compraram (proposta_itens.descricao/produto) ou demonstraram
+// interesse (leads.assunto/mensagem, casado por e-mail) num produto/marca/palavra-chave.
+campanhasRouter.get('/clientes-por-interesse', async (req, res) => {
+  try {
+    const termo = String(req.query.q ?? '').trim()
+    if (!termo) return res.status(400).json({ erro: 'Informe um termo de busca (ex.: TVPLAY, VIDEOMART).' })
+    const like = `%${termo}%`
+
+    const [compradores] = await pool.query(`
+      SELECT DISTINCT c.id, c.razao_social AS nome, c.email, 'compra' AS origem
+      FROM clientes c
+      JOIN propostas p ON p.cliente_id = c.id
+      JOIN proposta_itens pi ON pi.proposta_id = p.id
+      LEFT JOIN produtos prod ON prod.id = pi.produto_id
+      WHERE c.ativo = 1 AND c.email IS NOT NULL AND c.email != ''
+        AND (pi.descricao LIKE ? OR prod.marca LIKE ? OR prod.modelo LIKE ?)
+    `, [like, like, like]) as any[][]
+
+    const [interessados] = await pool.query(`
+      SELECT DISTINCT c.id, c.razao_social AS nome, c.email, 'lead' AS origem
+      FROM clientes c
+      JOIN leads l ON l.email = c.email
+      WHERE c.ativo = 1 AND c.email IS NOT NULL AND c.email != ''
+        AND (l.assunto LIKE ? OR l.mensagem LIKE ?)
+    `, [like, like]) as any[][]
+
+    const mapa = new Map<number, any>()
+    for (const c of [...(compradores as any[]), ...(interessados as any[])]) {
+      const existente = mapa.get(c.id)
+      if (existente) {
+        if (!existente.origens.includes(c.origem)) existente.origens.push(c.origem)
+      } else {
+        mapa.set(c.id, { id: c.id, nome: c.nome, email: c.email, origens: [c.origem] })
+      }
+    }
+
+    res.json({ clientes: [...mapa.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')) })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao buscar clientes por interesse.' })
+  }
+})
+
 campanhasRouter.post('/grupos', requireAdmin, async (req, res) => {
   try {
     const { nome, descricao } = req.body
