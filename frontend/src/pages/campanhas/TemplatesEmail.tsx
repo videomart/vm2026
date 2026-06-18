@@ -99,17 +99,24 @@ export function TemplatesEmail() {
           </button>
           <div className="tabela-wrapper">
             <table className="tabela">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th style={{ width: '90px' }}></th>
+                </tr>
+              </thead>
               <tbody>
                 {lista.length === 0 && (
-                  <tr><td style={{ textAlign: 'center' }}>Nenhum template.</td></tr>
+                  <tr><td colSpan={2} style={{ textAlign: 'center' }}>Nenhum template.</td></tr>
                 )}
                 {lista.map((t) => (
-                  <tr key={t.id} style={{ cursor: 'pointer', background: editandoId === t.id ? 'var(--bg-alt)' : undefined }}>
-                    <td onClick={() => editar(t)}>{t.nome}</td>
-                    <td style={{ width: '40px' }}>
-                      <button className="botao-perigo" type="button" onClick={() => remover(t.id, t.nome)} style={{ padding: '2px 6px', fontSize: '11px' }}>
-                        ×
-                      </button>
+                  <tr key={t.id} style={{ background: editandoId === t.id ? 'var(--bg-alt)' : undefined }}>
+                    <td onClick={() => editar(t)} style={{ cursor: 'pointer' }}>{t.nome}</td>
+                    <td>
+                      <div className="acoes">
+                        <button className="botao-link" type="button" onClick={() => editar(t)}>Editar</button>
+                        <button className="botao-perigo" type="button" onClick={() => remover(t.id, t.nome)}>Remover</button>
+                      </div>
                     </td>
                   </tr>
                 ))}

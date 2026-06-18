@@ -1,5 +1,17 @@
 import nodemailer from 'nodemailer'
+import juice from 'juice'
 import { pool } from './db.js'
+
+// Clientes de e-mail (Gmail, Outlook etc.) ignoram <style> em <head> por segurança —
+// só respeitam CSS já inline em cada elemento. juice converte um pelo outro antes do envio.
+function inlinarCss(html: string | undefined): string | undefined {
+  if (!html) return html
+  try {
+    return juice(html)
+  } catch {
+    return html
+  }
+}
 
 // Retorna config SMTP: prioriza setup do banco, cai para process.env como fallback
 async function getSmtpConfig() {
@@ -50,7 +62,7 @@ export async function enviarEmail(opts: {
     to: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
     subject: opts.subject,
     text: opts.text,
-    html: opts.html,
+    html: inlinarCss(opts.html),
     replyTo: opts.replyTo,
     attachments: opts.attachments,
   })
@@ -65,6 +77,7 @@ export async function enviarCampanha(destinatarios: { email: string; nome: strin
     secure: cfg.secure,
     auth: { user: cfg.user, pass: cfg.pass },
   })
+  const htmlInline = inlinarCss(html)
 
   const erros: string[] = []
   let enviados = 0
@@ -76,7 +89,7 @@ export async function enviarCampanha(destinatarios: { email: string; nome: strin
         from: cfg.from,
         to: dest.email,
         subject: assunto,
-        html,
+        html: htmlInline,
       })
       enviados++
       if (intervaloMs > 0 && enviados < destinatarios.length) {
