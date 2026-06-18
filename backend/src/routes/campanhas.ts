@@ -257,6 +257,45 @@ campanhasRouter.delete('/:id', requireAdmin, async (req, res) => {
   }
 })
 
+// Retoma uma campanha travada (ex.: backend reiniciou no meio do processamento).
+// Reprocessa quem está 'pendente'; se reincluir_erros=true, também tenta de novo
+// quem falhou antes (útil quando o erro era ratelimit/conta sem saldo, já corrigido).
+campanhasRouter.post('/:id/retomar', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, assunto, corpo, status_processamento FROM campanhas_email WHERE id = ?',
+      [req.params.id],
+    ) as any[]
+    const campanha = rows[0]
+    if (!campanha) return res.status(404).json({ erro: 'Campanha não encontrada.' })
+
+    if (req.body?.reincluir_erros) {
+      await pool.query(
+        `UPDATE campanha_envios SET status = 'pendente', mensagem_erro = NULL WHERE campanha_id = ? AND status = 'erro'`,
+        [req.params.id],
+      )
+    }
+
+    const [pendentesRows] = await pool.query(
+      `SELECT COUNT(*) AS total FROM campanha_envios WHERE campanha_id = ? AND status = 'pendente'`,
+      [req.params.id],
+    ) as any[]
+    if (!pendentesRows[0].total) return res.status(400).json({ erro: 'Nenhum destinatário pendente para reenviar.' })
+
+    await pool.query(
+      `UPDATE campanhas_email SET status_processamento = 'processando' WHERE id = ?`,
+      [req.params.id],
+    )
+
+    processarCampanhaEmBackground(campanha.id, campanha.assunto, campanha.corpo)
+      .catch((e) => console.error(`Erro ao retomar campanha ${campanha.id} em background:`, e))
+
+    res.json({ ok: true, pendentes: pendentesRows[0].total })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao retomar campanha.' })
+  }
+})
+
 campanhasRouter.post('/', requireAdmin, async (req: any, res) => {
   try {
     const { grupo_id, assunto, corpo, incluir_contatos } = req.body

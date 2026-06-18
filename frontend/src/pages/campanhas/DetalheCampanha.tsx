@@ -45,6 +45,7 @@ export function DetalheCampanha() {
   const [filtroStatus, setFiltroStatus] = useState<StatusEnvio | ''>('')
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [retomando, setRetomando] = useState(false)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function carregar() {
@@ -84,6 +85,26 @@ export function DetalheCampanha() {
     const lista = comErro.map((e) => e.email).join(', ')
     navigator.clipboard.writeText(lista)
     alert(`${comErro.length} e-mail(s) com erro copiado(s) para a área de transferência.`)
+  }
+
+  async function retomar(reincluirErros: boolean) {
+    setRetomando(true)
+    setErro(null)
+    try {
+      const res = await fetch(`/api/campanhas/${id}/retomar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reincluir_erros: reincluirErros }),
+      })
+      const d = await res.json()
+      if (!res.ok) { setErro(d.erro ?? 'Erro ao retomar campanha.'); return }
+      carregar()
+    } catch {
+      setErro('Erro de conexão ao retomar campanha.')
+    } finally {
+      setRetomando(false)
+    }
   }
 
   return (
@@ -126,6 +147,21 @@ export function DetalheCampanha() {
             Use para localizar e corrigir/excluir esses contatos.
           </span>
         </p>
+      )}
+
+      {campanha.status_processamento !== 'processando' && (pendentes.length > 0 || comErro.length > 0) && (
+        <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+          {pendentes.length > 0 && (
+            <button className="botao" type="button" disabled={retomando} onClick={() => retomar(false)}>
+              {retomando ? 'Retomando...' : `Retomar envio (${pendentes.length} pendente${pendentes.length > 1 ? 's' : ''})`}
+            </button>
+          )}
+          {comErro.length > 0 && (
+            <button className="botao-secundario" type="button" disabled={retomando} onClick={() => retomar(true)}>
+              {retomando ? 'Retomando...' : `Tentar de novo os ${comErro.length} com erro`}
+            </button>
+          )}
+        </div>
       )}
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
