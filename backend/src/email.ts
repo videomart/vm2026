@@ -166,7 +166,11 @@ export async function processarCampanhaEmBackground(campanhaId: number, assunto:
       socketTimeout: 30000,
     })]))
 
-    const intervaloMs = 2000 // espaçamento mínimo entre envios, mesmo distribuindo entre contas
+    // Espaçamento entre envios, mesmo distribuindo entre contas. Valor conservador para
+    // não disparar a proteção antispam de provedores (Hostinger já suspendeu as contas
+    // por "atividade suspeita" com envio de volume simultâneo entre múltiplas caixas
+    // novas) — aumentar com cautela, e só depois de um período de aquecimento.
+    const intervaloMs = 10000
     let indiceConta = 0
     let processados = 0
 
