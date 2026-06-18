@@ -41,6 +41,93 @@ leadsRouter.post('/captura', async (req, res) => {
   res.status(201).json({ mensagem: 'Recebido com sucesso.' })
 })
 
+// Endpoint público compatível com o formato do site institucional (salvadb.php):
+// aceita GET (legado CF7: titulo/nome/empresa/telefone/email/informacoes) e POST
+// (novo handler WP: vm_tipo/vm_contato/vm_empresa/vm_telefone/vm_email/vm_produto/
+// vm_data_pref), nos dois casos como application/x-www-form-urlencoded.
+function processarCapturaSite(req: import('express').Request, res: import('express').Response) {
+  return async () => {
+    const isGet = req.method === 'GET'
+    const origem = isGet ? (req.query as Record<string, string>) : (req.body as Record<string, string>)
+
+    let nomeEmpresa: string
+    let contato: string
+    let telefone: string
+    let email: string
+    let assunto: string
+    let mensagem: string
+
+    if (isGet) {
+      // formato legado CF7
+      assunto = origem.titulo?.trim() || 'contato'
+      contato = origem.nome?.trim() || ''
+      nomeEmpresa = origem.empresa?.trim() || ''
+      telefone = origem.telefone?.trim() || ''
+      email = origem.email?.trim() || ''
+      mensagem = origem.informacoes?.trim() || ''
+    } else {
+      // formato novo (handler WP)
+      assunto = origem.vm_tipo?.trim() || 'contato'
+      contato = origem.vm_contato?.trim() || ''
+      nomeEmpresa = origem.vm_empresa?.trim() || ''
+      telefone = origem.vm_telefone?.trim() || ''
+      email = origem.vm_email?.trim() || ''
+      const produto = origem.vm_produto?.trim() || ''
+      const dataPref = origem.vm_data_pref?.trim() || ''
+      mensagem = [
+        produto ? `Produto: ${produto}` : '',
+        dataPref ? `Data preferida: ${dataPref}` : '',
+      ].filter(Boolean).join(' | ')
+    }
+
+    if (!contato && !nomeEmpresa) {
+      res.status(400).json({ ok: false, error: 'missing_contact_or_company' })
+      return
+    }
+    if (!email && !telefone) {
+      res.status(400).json({ ok: false, error: 'missing_email_or_phone' })
+      return
+    }
+
+    await pool.query('INSERT INTO leads SET ?', [{
+      nome_empresa: nomeEmpresa || null,
+      contato: contato || null,
+      telefone: telefone || null,
+      email: email || null,
+      cidade: null,
+      uf: null,
+      assunto: assunto || null,
+      mensagem: mensagem || null,
+      origem: 'site',
+      status: 'novo',
+      vendedor_id: null,
+    }])
+
+    if (isGet) {
+      // mantém o comportamento de redirect que o CF7 legado espera
+      res.redirect('https://avideomart.com.br/obrigado')
+      return
+    }
+    res.status(201).json({ ok: true })
+  }
+}
+
+leadsRouter.get('/captura-site', async (req, res) => {
+  try {
+    await processarCapturaSite(req, res)()
+  } catch {
+    res.status(500).json({ ok: false, error: 'insert_failed' })
+  }
+})
+
+leadsRouter.post('/captura-site', async (req, res) => {
+  try {
+    await processarCapturaSite(req, res)()
+  } catch {
+    res.status(500).json({ ok: false, error: 'insert_failed' })
+  }
+})
+
 leadsRouter.use(requireAuth)
 
 const CAMPOS_TEXTO = [...CAMPOS_CAPTURA, 'origem'] as const
