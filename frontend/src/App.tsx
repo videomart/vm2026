@@ -16,6 +16,7 @@ import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
 import { FormularioUsuario } from './pages/usuarios/FormularioUsuario'
 import { Setup } from './pages/setup/Setup'
 import { Condicoes } from './pages/setup/Condicoes'
+import { ContasSmtp } from './pages/setup/ContasSmtp'
 import { Marcas } from './pages/setup/Marcas'
 import { Categorias } from './pages/setup/Categorias'
 import { CategoriasCliente } from './pages/setup/CategoriasCliente'
@@ -31,7 +32,7 @@ type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
 const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
 
-const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente']
+const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -140,6 +141,7 @@ function App() {
                   <NavLink to="/marcas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Marcas</NavLink>
                   <NavLink to="/categorias" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias</NavLink>
                   <NavLink to="/categorias-cliente" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de cliente</NavLink>
+                  <NavLink to="/contas-smtp" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas SMTP</NavLink>
                 </div>
               )}
             </>
@@ -185,6 +187,9 @@ function App() {
           )}
           {usuario.papel === 'admin' && (
             <Route path="/setup/condicoes" element={<Condicoes />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/contas-smtp" element={<ContasSmtp />} />
           )}
           {usuario.papel === 'admin' && (
             <Route path="/marcas" element={<Marcas />} />
