@@ -32,7 +32,7 @@ export function ListaLeads() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
 
-  const grid = useGrid(leads, 'criado_em')
+  const grid = useGrid(leads, 'id', 30, 'desc')
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -104,6 +104,7 @@ export function ListaLeads() {
             <table className="tabela">
               <thead>
                 <tr>
+                  <th {...grid.th('id')}>ID</th>
                   <th {...grid.th('nome_empresa')}>Empresa / Contato</th>
                   <th>Telefone / E-mail</th>
                   <th {...grid.th('cidade')}>Cidade/UF</th>
@@ -117,6 +118,7 @@ export function ListaLeads() {
               <tbody>
                 {grid.pagina_atual.map((l) => (
                   <tr key={l.id}>
+                    <td>{l.id}</td>
                     <td>
                       {l.nome_empresa ?? '—'}
                       {l.contato && <div style={{ fontSize: '0.85em', color: 'var(--text)' }}>{l.contato}</div>}
