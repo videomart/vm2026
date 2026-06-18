@@ -24,6 +24,7 @@ import { NovaCampanha } from './pages/campanhas/NovaCampanha'
 import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
 import { ListaContasReceber } from './pages/contasReceber/ListaContasReceber'
+import { ListaAssinaturas } from './pages/contasReceber/ListaAssinaturas'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -166,6 +167,7 @@ function App() {
           <Route path="/propostas/nova" element={<FormularioProposta />} />
           <Route path="/propostas/:id" element={<FormularioProposta />} />
           <Route path="/contas-receber" element={<ListaContasReceber />} />
+          <Route path="/contas-receber/assinaturas" element={<ListaAssinaturas />} />
           <Route path="/leads" element={<ListaLeads />} />
           <Route path="/leads/novo" element={<FormularioLead />} />
           <Route path="/leads/:id" element={<FormularioLead />} />

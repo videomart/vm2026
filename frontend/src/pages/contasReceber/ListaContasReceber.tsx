@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarMoeda, formatarData } from '../../utils/formatar'
+import { ModalRecebimento } from './ModalRecebimento'
 
-type StatusConta = 'pendente' | 'pago' | 'atrasado'
+type StatusConta = 'pendente' | 'parcial' | 'pago' | 'atrasado'
 
 type Conta = {
   id: number
@@ -13,21 +14,28 @@ type Conta = {
   vencimento: string
   status: StatusConta
   pago_em: string | null
-  venda_id: number
-  proposta_id: number
+  origem_tipo: 'venda' | 'assinatura'
+  numero_parcela: number
+  total_parcelas: number
+  venda_id: number | null
+  proposta_id: number | null
+  assinatura_id: number | null
   cliente_id: number
   cliente_nome: string
-  vendedor_nome: string
+  vendedor_nome: string | null
+  total_recebido: string
 }
 
 const LABELS_STATUS: Record<StatusConta, string> = {
   pendente: 'Pendente',
+  parcial: 'Parcial',
   pago: 'Pago',
   atrasado: 'Atrasado',
 }
 
 const CLASSES_STATUS: Record<StatusConta, string> = {
   pendente: 'badge badge-ativo',
+  parcial: 'badge badge-ativo',
   pago: 'badge badge-sucesso',
   atrasado: 'badge badge-inativo',
 }
@@ -38,6 +46,7 @@ export function ListaContasReceber() {
   const [busca, setBusca] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [contaModal, setContaModal] = useState<Conta | null>(null)
 
   const grid = useGrid(contas, 'vencimento')
 
@@ -54,31 +63,33 @@ export function ListaContasReceber() {
       .finally(() => setCarregando(false))
   }
 
-  useEffect(() => { carregar() }, [filtroStatus]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function marcarPago(id: number) {
-    const res = await fetch(`/api/contas-receber/${id}/pagar`, { method: 'PUT', credentials: 'include' })
-    if (res.ok) carregar()
-  }
+  useEffect(() => {
+    // gera as contas do mês para assinaturas ativas, depois carrega a lista
+    fetch('/api/contas-receber/assinaturas/gerar-mes', { method: 'POST', credentials: 'include' })
+      .catch(() => null)
+      .finally(carregar)
+  }, [filtroStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function reabrir(id: number) {
+    if (!confirm('Reabrir esta conta? Os recebimentos registrados serão apagados.')) return
     const res = await fetch(`/api/contas-receber/${id}/reabrir`, { method: 'PUT', credentials: 'include' })
     if (res.ok) carregar()
   }
 
   const totalPendente = contas
     .filter((c) => c.status !== 'pago')
-    .reduce((s, c) => s + Number(c.valor), 0)
+    .reduce((s, c) => s + (Number(c.valor) - Number(c.total_recebido)), 0)
 
   return (
     <section>
       <div className="cabecalho-secao">
         <h2>Contas a receber</h2>
+        <Link className="botao-secundario" to="/contas-receber/assinaturas">Assinaturas recorrentes</Link>
       </div>
 
       {!carregando && (
         <p style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '12px' }}>
-          Total pendente/atrasado: <strong style={{ color: 'var(--text-h)' }}>{formatarMoeda(totalPendente)}</strong>
+          Saldo pendente/atrasado: <strong style={{ color: 'var(--text-h)' }}>{formatarMoeda(totalPendente)}</strong>
         </p>
       )}
 
@@ -97,6 +108,7 @@ export function ListaContasReceber() {
         >
           <option value="">Todos os status</option>
           <option value="pendente">Pendente</option>
+          <option value="parcial">Parcial</option>
           <option value="atrasado">Atrasado</option>
           <option value="pago">Pago</option>
         </select>
@@ -109,14 +121,14 @@ export function ListaContasReceber() {
         {!carregando && contas.length === 0 && <p className="estado-vazio">Nenhuma conta a receber encontrada.</p>}
         {!carregando && contas.length > 0 && (
           <>
-            <table className="tabela" style={{ minWidth: '980px' }}>
+            <table className="tabela" style={{ minWidth: '1100px' }}>
               <thead>
                 <tr>
                   <th {...grid.th('cliente_nome')}>Cliente</th>
                   <th {...grid.th('descricao')}>Descrição</th>
-                  <th {...grid.th('venda_id')} style={{ whiteSpace: 'nowrap' }}>Venda</th>
                   <th {...grid.th('vendedor_nome')}>Vendedor</th>
                   <th {...grid.th('valor')} style={{ whiteSpace: 'nowrap' }}>Valor</th>
+                  <th {...grid.th('total_recebido')} style={{ whiteSpace: 'nowrap' }}>Recebido</th>
                   <th {...grid.th('vencimento')} style={{ whiteSpace: 'nowrap' }}>Vencimento</th>
                   <th {...grid.th('status')} style={{ whiteSpace: 'nowrap' }}>Status</th>
                   <th style={{ whiteSpace: 'nowrap' }}>Ações</th>
@@ -126,19 +138,25 @@ export function ListaContasReceber() {
                 {grid.pagina_atual.map((c) => (
                   <tr key={c.id}>
                     <td>{c.cliente_nome}</td>
-                    <td>{c.descricao ?? '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <Link to={`/propostas/${c.proposta_id}`}>#{c.venda_id}</Link>
+                    <td>
+                      {c.descricao ?? '—'}
+                      {c.origem_tipo === 'venda' && c.proposta_id && (
+                        <> · <Link to={`/propostas/${c.proposta_id}`}>proposta #{c.proposta_id}</Link></>
+                      )}
                     </td>
-                    <td>{c.vendedor_nome}</td>
+                    <td>{c.vendedor_nome ?? '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(c.valor)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(c.total_recebido)}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatarData(c.vencimento)}</td>
                     <td><span className={CLASSES_STATUS[c.status]}>{LABELS_STATUS[c.status]}</span></td>
                     <td>
                       <div className="acoes">
-                        {c.status === 'pago'
-                          ? <button className="botao-link" type="button" onClick={() => reabrir(c.id)}>Reabrir</button>
-                          : <button className="botao-link" type="button" onClick={() => marcarPago(c.id)}>Marcar pago</button>}
+                        <button className="botao-link" type="button" onClick={() => setContaModal(c)}>
+                          {c.status === 'pago' ? 'Ver' : 'Receber'}
+                        </button>
+                        {c.status !== 'pendente' && c.status !== 'atrasado' && (
+                          <button className="botao-link" type="button" onClick={() => reabrir(c.id)}>Reabrir</button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -156,6 +174,16 @@ export function ListaContasReceber() {
           </>
         )}
       </div>
+
+      {contaModal && (
+        <ModalRecebimento
+          contaId={contaModal.id}
+          valorTotal={Number(contaModal.valor)}
+          totalRecebido={Number(contaModal.total_recebido)}
+          onFechar={() => setContaModal(null)}
+          onAtualizado={carregar}
+        />
+      )}
     </section>
   )
 }

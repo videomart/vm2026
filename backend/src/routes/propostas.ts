@@ -248,6 +248,8 @@ propostasRouter.post('/:id/converter', async (req, res) => {
     if (!proposta) { await conn.rollback(); return res.status(404).json({ erro: 'Proposta não encontrada.' }) }
     if (proposta.status === 'convertida') { await conn.rollback(); return res.status(409).json({ erro: 'Proposta já foi convertida.' }) }
 
+    const numeroParcelas = Math.max(1, Number(req.body?.numero_parcelas) || 1)
+
     await conn.query('UPDATE propostas SET status = ? WHERE id = ?', ['convertida', req.params.id])
 
     const [vendaResult] = await conn.query(
@@ -257,16 +259,32 @@ propostasRouter.post('/:id/converter', async (req, res) => {
     ) as any[]
 
     const vendaId = vendaResult.insertId
-    const vencimento = proposta.validade ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const primeiroVencimento = proposta.validade
+      ? new Date(proposta.validade)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-    await conn.query(
-      `INSERT INTO contas_a_receber (venda_id, descricao, valor, vencimento)
-       VALUES (?, ?, ?, ?)`,
-      [vendaId, `Venda #${vendaId}`, proposta.total, vencimento],
-    )
+    const total = Number(proposta.total)
+    const valorParcela = Math.floor((total / numeroParcelas) * 100) / 100
+    const valorUltimaParcela = Math.round((total - valorParcela * (numeroParcelas - 1)) * 100) / 100
+
+    for (let i = 0; i < numeroParcelas; i++) {
+      const vencimento = new Date(primeiroVencimento)
+      vencimento.setMonth(vencimento.getMonth() + i)
+      const valor = i === numeroParcelas - 1 ? valorUltimaParcela : valorParcela
+      const descricao = numeroParcelas > 1
+        ? `Venda #${vendaId} — parcela ${i + 1}/${numeroParcelas}`
+        : `Venda #${vendaId}`
+
+      await conn.query(
+        `INSERT INTO contas_a_receber
+           (venda_id, origem_tipo, numero_parcela, total_parcelas, descricao, valor, vencimento)
+         VALUES (?, 'venda', ?, ?, ?, ?, ?)`,
+        [vendaId, i + 1, numeroParcelas, descricao, valor, vencimento.toISOString().slice(0, 10)],
+      )
+    }
 
     await conn.commit()
-    res.json({ ok: true, venda_id: vendaId })
+    res.json({ ok: true, venda_id: vendaId, parcelas: numeroParcelas })
   } catch {
     await conn.rollback()
     res.status(500).json({ erro: 'Erro ao converter proposta.' })

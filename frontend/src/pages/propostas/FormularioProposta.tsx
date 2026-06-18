@@ -282,15 +282,20 @@ export function FormularioProposta() {
   }
 
   async function converter() {
-    if (!confirm('Converter esta proposta em venda? Esta ação não pode ser desfeita.')) return
+    const resposta = window.prompt('Converter em venda. Em quantas parcelas? (deixe 1 para pagamento único)', '1')
+    if (resposta === null) return
+    const numeroParcelas = Math.max(1, Number(resposta) || 1)
+    if (!confirm(`Converter esta proposta em venda em ${numeroParcelas}x? Esta ação não pode ser desfeita.`)) return
     setErro(null)
     const res = await fetch(`/api/propostas/${id}/converter`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
+      body: JSON.stringify({ numero_parcelas: numeroParcelas }),
     })
     const d = await res.json()
     if (!res.ok) { setErro(d.erro ?? 'Erro ao converter.'); return }
-    setMensagem(`Venda #${d.venda_id} criada com conta a receber automática.`)
+    setMensagem(`Venda #${d.venda_id} criada com ${d.parcelas} conta(s) a receber.`)
     setProposta((prev) => prev ? { ...prev, status: 'convertida' } : prev)
   }
 
