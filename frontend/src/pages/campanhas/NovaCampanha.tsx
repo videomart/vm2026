@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { EditorHtml } from '../../components/EditorHtml'
 
 type Grupo = { id: number; nome: string; total_clientes: number }
@@ -7,6 +7,8 @@ type Template = { id: number; nome: string; assunto: string | null; corpo_html: 
 
 export function NovaCampanha() {
   const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const reenviarId = params.get('reenviar')
   const [grupos, setGrupos] = useState<Grupo[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [grupoId, setGrupoId] = useState('')
@@ -16,6 +18,7 @@ export function NovaCampanha() {
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState<{ total: number; erros?: string[] } | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [carregandoReenvio, setCarregandoReenvio] = useState(Boolean(reenviarId))
 
   useEffect(() => {
     fetch('/api/campanhas/grupos', { credentials: 'include' })
@@ -25,6 +28,21 @@ export function NovaCampanha() {
       .then((r) => r.json())
       .then((d) => setTemplates(d.templates ?? []))
   }, [])
+
+  useEffect(() => {
+    if (!reenviarId) return
+    fetch(`/api/campanhas/${reenviarId}`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.campanha) {
+          setAssunto(d.campanha.assunto)
+          setCorpo(d.campanha.corpo)
+          setGrupoId(String(d.campanha.grupo_id))
+        }
+      })
+      .catch(() => setErro('Não foi possível carregar a campanha para reenvio.'))
+      .finally(() => setCarregandoReenvio(false))
+  }, [reenviarId])
 
   function carregarTemplate(id: string) {
     const t = templates.find((x) => String(x.id) === id)
@@ -63,9 +81,16 @@ export function NovaCampanha() {
 
   const grupoSelecionado = grupos.find((g) => String(g.id) === grupoId)
 
+  if (carregandoReenvio) return <p>Carregando campanha para reenvio...</p>
+
   return (
     <section>
-      <h2>Nova campanha de e-mail</h2>
+      <h2>{reenviarId ? 'Reenviar campanha' : 'Nova campanha de e-mail'}</h2>
+      {reenviarId && (
+        <p style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '12px' }}>
+          Assunto e corpo carregados da campanha #{reenviarId}. Você pode trocar o grupo de destinatários antes de disparar novamente.
+        </p>
+      )}
 
       {resultado && (
         <div className="alerta-sucesso" role="status">

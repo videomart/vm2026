@@ -164,7 +164,7 @@ campanhasRouter.get('/', async (_req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT c.id, c.assunto, c.enviado_em, c.criado_em,
-             g.nome AS grupo_nome,
+             c.grupo_id, g.nome AS grupo_nome,
              u.nome AS enviado_por_nome
       FROM campanhas_email c
       JOIN grupos_envio g ON g.id = c.grupo_id
@@ -175,6 +175,32 @@ campanhasRouter.get('/', async (_req, res) => {
     res.json({ campanhas: rows })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar campanhas.' })
+  }
+})
+
+campanhasRouter.get('/:id', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT c.id, c.assunto, c.corpo, c.grupo_id, c.enviado_em, c.criado_em,
+             g.nome AS grupo_nome
+      FROM campanhas_email c
+      JOIN grupos_envio g ON g.id = c.grupo_id
+      WHERE c.id = ?
+    `, [req.params.id])
+    const campanha = (rows as any[])[0]
+    if (!campanha) return res.status(404).json({ erro: 'Campanha não encontrada.' })
+    res.json({ campanha })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao buscar campanha.' })
+  }
+})
+
+campanhasRouter.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM campanhas_email WHERE id = ?', [req.params.id])
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao remover campanha.' })
   }
 })
 
