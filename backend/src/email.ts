@@ -104,6 +104,9 @@ export async function enviarEmail(opts: {
     port: cfg.port,
     secure: cfg.secure,
     auth: { user: cfg.user, pass: cfg.pass },
+    connectionTimeout: 15000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
   })
   return t.sendMail({
     from: cfg.from,
@@ -158,6 +161,9 @@ export async function processarCampanhaEmBackground(campanhaId: number, assunto:
 
     const transportes = new Map(contas.map((c) => [c.id, nodemailer.createTransport({
       host: c.host, port: c.port, secure: c.secure, auth: { user: c.user, pass: c.pass },
+      connectionTimeout: 15000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
     })]))
 
     const intervaloMs = 2000 // espaçamento mínimo entre envios, mesmo distribuindo entre contas
