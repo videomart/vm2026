@@ -54,15 +54,18 @@ services:
     restart: unless-stopped
     # Sem "ports": o MySQL não deve ficar exposto à internet, só acessível pela
     # rede interna do compose. Também NÃO entra na rede tvplay-web_default —
-    # fica isolado, só "backend" e "phpmyadmin" o alcançam via nome "db".
+    # fica isolado, só "backend" e "adminer" o alcançam via nome "db".
 
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
+  adminer:
+    # phpmyadmin/phpmyadmin só publica imagem amd64 (sem build ARM64) — em VPS ARM64
+    # falha com "exec format error" mesmo com emulação. Adminer tem imagem oficial
+    # multi-arch (inclui arm64) e cobre a mesma necessidade (consultar/editar tabelas).
+    image: adminer
     environment:
-      PMA_HOST: db
+      ADMINER_DEFAULT_SERVER: db
       VIRTUAL_HOST: phpmyadmin-vm2026.${DOMINIO_BASE}
       LETSENCRYPT_HOST: phpmyadmin-vm2026.${DOMINIO_BASE}
-      VIRTUAL_PORT: 80
+      VIRTUAL_PORT: 8080
     depends_on:
       - db
     networks:
@@ -71,8 +74,8 @@ services:
     restart: unless-stopped
     # Subdomínio próprio (não path) — nginx-proxy roteia por Host de forma confiável,
     # diferente de VIRTUAL_PATH para containers diferentes no mesmo host. Sem auth_basic
-    # própria aqui (não temos Nginx nosso) — proteger com senha forte do MySQL/phpMyAdmin
-    # e considerar restringir por firewall/IP se exposto à internet por muito tempo.
+    # própria aqui (não temos Nginx nosso) — proteger com senha forte do MySQL e
+    # considerar restringir por firewall/IP se exposto à internet por muito tempo.
 
 networks:
   tvplay-web_default:
