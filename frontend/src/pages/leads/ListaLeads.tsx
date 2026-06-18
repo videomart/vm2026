@@ -141,9 +141,14 @@ export function ListaLeads() {
                     <td>
                       <div className="acoes">
                         <Link className="botao-link" to={`/leads/${l.id}`}>Ver</Link>
-                        {!l.vendedor_id && (
-                          <button className="botao-secundario" type="button" onClick={() => assumir(l)}>Assumir</button>
-                        )}
+                        <button
+                          className="botao-secundario"
+                          type="button"
+                          disabled={!!l.vendedor_id}
+                          onClick={() => assumir(l)}
+                        >
+                          Assumir
+                        </button>
                         <button className="botao-perigo" type="button" onClick={() => remover(l)}>Remover</button>
                       </div>
                     </td>

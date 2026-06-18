@@ -357,10 +357,15 @@
   color: var(--text-h);
 }
 
-.botao-secundario:hover {
+.botao-secundario:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-bg);
+}
+
+.botao-secundario:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .botao-perigo {
