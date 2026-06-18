@@ -20,6 +20,7 @@ import { Marcas } from './pages/setup/Marcas'
 import { Categorias } from './pages/setup/Categorias'
 import { CategoriasCliente } from './pages/setup/CategoriasCliente'
 import { ListaCampanhas } from './pages/campanhas/ListaCampanhas'
+import { DetalheCampanha } from './pages/campanhas/DetalheCampanha'
 import { NovaCampanha } from './pages/campanhas/NovaCampanha'
 import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
@@ -178,6 +179,7 @@ function App() {
           <Route path="/campanhas/nova" element={<NovaCampanha />} />
           <Route path="/campanhas/grupos" element={<GruposEnvio />} />
           <Route path="/campanhas/templates" element={<TemplatesEmail />} />
+          <Route path="/campanhas/:id" element={<DetalheCampanha />} />
           {usuario.papel === 'admin' && (
             <Route path="/setup" element={<Setup />} />
           )}

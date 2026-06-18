@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { formatarData } from '../../utils/formatar'
+
+type StatusProcessamento = 'processando' | 'concluida' | 'erro' | null
 
 type Campanha = {
   id: number
@@ -10,6 +12,16 @@ type Campanha = {
   enviado_por_nome: string
   enviado_em: string | null
   criado_em: string
+  status_processamento: StatusProcessamento
+  total_destinatarios: number | null
+  total_enviados: number
+  total_erros: number
+}
+
+const LABEL_STATUS: Record<string, string> = {
+  processando: 'Enviando...',
+  concluida: 'Concluída',
+  erro: 'Erro',
 }
 
 export function ListaCampanhas() {
@@ -17,6 +29,7 @@ export function ListaCampanhas() {
   const [campanhas, setCampanhas] = useState<Campanha[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function carregar() {
     fetch('/api/campanhas', { credentials: 'include' })
@@ -27,6 +40,20 @@ export function ListaCampanhas() {
   }
 
   useEffect(() => { carregar() }, [])
+
+  // Atualiza automaticamente enquanto houver campanha em processamento
+  useEffect(() => {
+    const temProcessando = campanhas.some((c) => c.status_processamento === 'processando')
+    if (temProcessando && !pollTimer.current) {
+      pollTimer.current = setInterval(carregar, 5000)
+    } else if (!temProcessando && pollTimer.current) {
+      clearInterval(pollTimer.current)
+      pollTimer.current = null
+    }
+    return () => {
+      if (pollTimer.current) { clearInterval(pollTimer.current); pollTimer.current = null }
+    }
+  }, [campanhas])
 
   async function remover(id: number, assunto: string) {
     if (!confirm(`Excluir o registro da campanha "${assunto}"? Isso não desfaz e-mails já enviados, apenas remove o histórico.`)) return
@@ -68,32 +95,53 @@ export function ListaCampanhas() {
               <th>Grupo</th>
               <th>Enviado por</th>
               <th>Enviado em</th>
+              <th>Progresso</th>
               <th style={{ width: '160px' }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {campanhas.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text)' }}>Nenhuma campanha enviada ainda.</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text)' }}>Nenhuma campanha enviada ainda.</td></tr>
             )}
-            {campanhas.map((c) => (
-              <tr key={c.id}>
-                <td>{c.id}</td>
-                <td>{c.assunto}</td>
-                <td>{c.grupo_nome}</td>
-                <td>{c.enviado_por_nome}</td>
-                <td>{c.enviado_em ? formatarData(c.enviado_em) : <em style={{ opacity: 0.5 }}>pendente</em>}</td>
-                <td>
-                  <div className="acoes">
-                    <button className="botao-link" type="button" onClick={() => navigate(`/campanhas/nova?reenviar=${c.id}`)}>
-                      Reenviar
-                    </button>
-                    <button className="botao-perigo" type="button" onClick={() => remover(c.id, c.assunto)}>
-                      Excluir
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {campanhas.map((c) => {
+              const total = c.total_destinatarios ?? 0
+              const processado = c.total_enviados + c.total_erros
+              return (
+                <tr key={c.id}>
+                  <td>{c.id}</td>
+                  <td><Link to={`/campanhas/${c.id}`}>{c.assunto}</Link></td>
+                  <td>{c.grupo_nome}</td>
+                  <td>{c.enviado_por_nome}</td>
+                  <td>{c.enviado_em ? formatarData(c.enviado_em) : <em style={{ opacity: 0.5 }}>pendente</em>}</td>
+                  <td>
+                    {c.status_processamento ? (
+                      <span style={{ fontSize: '12px' }}>
+                        <span className={`badge ${c.status_processamento === 'concluida' ? 'badge-sucesso' : c.status_processamento === 'erro' ? 'badge-inativo' : 'badge-ativo'}`}>
+                          {LABEL_STATUS[c.status_processamento]}
+                        </span>
+                        {' '}
+                        {processado}/{total}
+                        {c.total_erros > 0 && (
+                          <span style={{ color: 'var(--perigo)' }}> ({c.total_erros} erro{c.total_erros > 1 ? 's' : ''})</span>
+                        )}
+                      </span>
+                    ) : (
+                      <em style={{ opacity: 0.5, fontSize: '12px' }}>—</em>
+                    )}
+                  </td>
+                  <td>
+                    <div className="acoes">
+                      <button className="botao-link" type="button" onClick={() => navigate(`/campanhas/nova?reenviar=${c.id}`)}>
+                        Reenviar
+                      </button>
+                      <button className="botao-perigo" type="button" onClick={() => remover(c.id, c.assunto)}>
+                        Excluir
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

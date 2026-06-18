@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { pool } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
 import { requireAdmin } from '../auth/middleware.js'
-import { enviarCampanha } from '../email.js'
+import { processarCampanhaEmBackground } from '../email.js'
 
 export const campanhasRouter = Router()
 campanhasRouter.use(requireAuth)
@@ -207,7 +207,10 @@ campanhasRouter.get('/', async (_req, res) => {
     const [rows] = await pool.query(`
       SELECT c.id, c.assunto, c.enviado_em, c.criado_em,
              c.grupo_id, g.nome AS grupo_nome,
-             u.nome AS enviado_por_nome
+             u.nome AS enviado_por_nome,
+             c.status_processamento, c.total_destinatarios,
+             (SELECT COUNT(*) FROM campanha_envios ce WHERE ce.campanha_id = c.id AND ce.status = 'enviado') AS total_enviados,
+             (SELECT COUNT(*) FROM campanha_envios ce WHERE ce.campanha_id = c.id AND ce.status = 'erro') AS total_erros
       FROM campanhas_email c
       JOIN grupos_envio g ON g.id = c.grupo_id
       JOIN usuarios u ON u.id = c.enviado_por
@@ -224,6 +227,7 @@ campanhasRouter.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT c.id, c.assunto, c.corpo, c.grupo_id, c.enviado_em, c.criado_em,
+             c.status_processamento, c.total_destinatarios,
              g.nome AS grupo_nome
       FROM campanhas_email c
       JOIN grupos_envio g ON g.id = c.grupo_id
@@ -231,7 +235,14 @@ campanhasRouter.get('/:id', async (req, res) => {
     `, [req.params.id])
     const campanha = (rows as any[])[0]
     if (!campanha) return res.status(404).json({ erro: 'Campanha não encontrada.' })
-    res.json({ campanha })
+
+    const [envios] = await pool.query(
+      `SELECT id, email, nome, status, mensagem_erro, enviado_em
+       FROM campanha_envios WHERE campanha_id = ? ORDER BY status DESC, email ASC`,
+      [req.params.id],
+    )
+
+    res.json({ campanha, envios })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar campanha.' })
   }
@@ -308,31 +319,33 @@ campanhasRouter.post('/', requireAdmin, async (req: any, res) => {
 
     // Registra campanha
     const [r] = await pool.query(
-      'INSERT INTO campanhas_email (grupo_id, assunto, corpo, enviado_por) VALUES (?, ?, ?, ?)',
-      [grupo_id, assunto.trim(), corpo.trim(), req.usuario.id],
+      `INSERT INTO campanhas_email (grupo_id, assunto, corpo, enviado_por, status_processamento, total_destinatarios)
+       VALUES (?, ?, ?, ?, 'processando', ?)`,
+      [grupo_id, assunto.trim(), corpo.trim(), req.usuario.id, clientes.length],
     ) as any[]
     const campanhaId = r.insertId
 
-    // Dispara e-mails respeitando limite/hora configurado no setup
-    const { enviados, erros } = await enviarCampanha(
-      clientes.map((c: any) => ({ email: c.email, nome: c.nome })),
-      assunto.trim(),
-      corpo.trim(),
+    // Cria um registro de envio por destinatário (status pendente) — é o que permite
+    // acompanhar progresso e ver exatamente quais e-mails falharam depois.
+    const valoresEnvios = clientes.map((c: any) => [campanhaId, c.email, c.nome ?? null])
+    await pool.query(
+      'INSERT INTO campanha_envios (campanha_id, email, nome) VALUES ?',
+      [valoresEnvios],
     )
 
-    // Marca como enviado
-    await pool.query(
-      'UPDATE campanhas_email SET enviado_em = NOW() WHERE id = ?',
-      [campanhaId],
-    )
+    // Dispara o processamento em background — não prende a requisição HTTP esperando
+    // todos os e-mails serem enviados (com 451 destinatários e limite/hora, isso podia
+    // levar horas e a conexão expirava antes, sem nenhum log do que tinha acontecido).
+    processarCampanhaEmBackground(campanhaId, assunto.trim(), corpo.trim())
+      .catch((e) => console.error(`Erro ao processar campanha ${campanhaId} em background:`, e))
 
     res.json({
       ok: true,
       campanhaId,
-      total: enviados,
-      erros: erros.length ? erros : undefined,
+      total: clientes.length,
+      processando: true,
     })
   } catch {
-    res.status(500).json({ erro: 'Erro ao disparar campanha.' })
+    res.status(500).json({ erro: 'Erro ao iniciar disparo da campanha.' })
   }
 })

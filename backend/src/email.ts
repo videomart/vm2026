@@ -102,3 +102,55 @@ export async function enviarCampanha(destinatarios: { email: string; nome: strin
 
   return { enviados, erros }
 }
+
+// Processa uma campanha em background, gravando o resultado de cada destinatário em
+// campanha_envios (status pendente/enviado/erro) — permite acompanhar progresso e
+// identificar exatamente quais e-mails falharam, sem prender a requisição HTTP.
+export async function processarCampanhaEmBackground(campanhaId: number, assunto: string, html: string) {
+  const cfg = await getSmtpConfig()
+  const t = nodemailer.createTransport({
+    host: cfg.host,
+    port: cfg.port,
+    secure: cfg.secure,
+    auth: { user: cfg.user, pass: cfg.pass },
+  })
+  const htmlInline = inlinarCss(html)
+  const intervaloMs = cfg.limiteHora > 0 ? Math.ceil(3600000 / cfg.limiteHora) : 0
+
+  try {
+    const [pendentes] = await pool.query(
+      'SELECT id, email FROM campanha_envios WHERE campanha_id = ? AND status = ?',
+      [campanhaId, 'pendente'],
+    ) as any[]
+
+    let processados = 0
+    for (const dest of pendentes as any[]) {
+      try {
+        await t.sendMail({ from: cfg.from, to: dest.email, subject: assunto, html: htmlInline })
+        await pool.query(
+          `UPDATE campanha_envios SET status = 'enviado', enviado_em = NOW() WHERE id = ?`,
+          [dest.id],
+        )
+      } catch (e: any) {
+        await pool.query(
+          `UPDATE campanha_envios SET status = 'erro', mensagem_erro = ? WHERE id = ?`,
+          [String(e.message ?? e).slice(0, 500), dest.id],
+        )
+      }
+      processados++
+      if (intervaloMs > 0 && processados < pendentes.length) {
+        await new Promise((r) => setTimeout(r, intervaloMs))
+      }
+    }
+
+    await pool.query(
+      `UPDATE campanhas_email SET status_processamento = 'concluida', enviado_em = NOW() WHERE id = ?`,
+      [campanhaId],
+    )
+  } catch {
+    await pool.query(
+      `UPDATE campanhas_email SET status_processamento = 'erro' WHERE id = ?`,
+      [campanhaId],
+    )
+  }
+}
