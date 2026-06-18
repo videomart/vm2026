@@ -9,16 +9,25 @@ type Props = {
   placeholder?: string
 }
 
+// Páginas HTML completas (com <!DOCTYPE>, <html>, <head> ou <style>) não podem ser
+// representadas pelo editor visual sem perda — o TipTap descarta tags/atributos que
+// não conhece (head, style, div com classes, etc.). Nesses casos travamos em modo
+// HTML puro, sem nunca passar o conteúdo pelo parser do editor.
+function ehPaginaCompleta(html: string): boolean {
+  return /<!DOCTYPE|<html[\s>]|<head[\s>]|<style[\s>]/i.test(html)
+}
+
 export function EditorHtml({ value, onChange, placeholder }: Props) {
-  const [modoHtml, setModoHtml] = useState(false)
+  const [modoHtml, setModoHtml] = useState(() => ehPaginaCompleta(value))
   const [htmlBruto, setHtmlBruto] = useState(value)
+  const travadoEmHtml = ehPaginaCompleta(htmlBruto)
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false, autolink: true }),
     ],
-    content: value,
+    content: modoHtml ? '' : value,
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: { class: 'editor-html-conteudo' },
@@ -27,6 +36,11 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
 
   // sincroniza quando o value muda externamente (ex.: carregar template)
   useEffect(() => {
+    if (ehPaginaCompleta(value)) {
+      setHtmlBruto(value)
+      setModoHtml(true)
+      return
+    }
     if (editor && !modoHtml && value !== editor.getHTML()) {
       editor.commands.setContent(value || '')
     }
@@ -35,13 +49,22 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
   function alternarModo() {
     if (!editor) return
     if (modoHtml) {
-      // voltando do HTML para visual: aplica o texto editado
-      editor.commands.setContent(htmlBruto || '')
-      onChange(editor.getHTML())
+      if (ehPaginaCompleta(htmlBruto)) {
+        // página completa: aplica direto, sem passar pelo editor (evitaria perda de conteúdo)
+        onChange(htmlBruto)
+      } else {
+        editor.commands.setContent(htmlBruto || '')
+        onChange(editor.getHTML())
+      }
     } else {
       setHtmlBruto(editor.getHTML())
     }
     setModoHtml((m) => !m)
+  }
+
+  function onChangeHtmlBruto(novoHtml: string) {
+    setHtmlBruto(novoHtml)
+    if (ehPaginaCompleta(novoHtml)) onChange(novoHtml)
   }
 
   if (!editor) return null
@@ -94,17 +117,26 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
           </>
         )}
         <span style={{ flex: 1 }} />
-        <button type="button" className="editor-html-botao" onClick={alternarModo}>
-          {modoHtml ? '✓ Aplicar HTML' : '</> Ver/editar HTML'}
-        </button>
+        {!travadoEmHtml && (
+          <button type="button" className="editor-html-botao" onClick={alternarModo}>
+            {modoHtml ? '✓ Aplicar HTML' : '</> Ver/editar HTML'}
+          </button>
+        )}
       </div>
       {modoHtml ? (
-        <textarea
-          className="editor-html-bruto sem-uppercase"
-          value={htmlBruto}
-          onChange={(e) => setHtmlBruto(e.target.value)}
-          placeholder="<p>Cole ou edite o HTML aqui...</p>"
-        />
+        <>
+          {travadoEmHtml && (
+            <p style={{ fontSize: '12px', color: 'var(--text)', padding: '8px 14px 0', margin: 0 }}>
+              Este conteúdo é uma página HTML completa (com &lt;head&gt;/&lt;style&gt;) e será enviado exatamente como está, sem edição visual — o editor não consegue representar páginas completas sem perda de conteúdo.
+            </p>
+          )}
+          <textarea
+            className="editor-html-bruto sem-uppercase"
+            value={htmlBruto}
+            onChange={(e) => onChangeHtmlBruto(e.target.value)}
+            placeholder="<p>Cole ou edite o HTML aqui...</p>"
+          />
+        </>
       ) : (
         <EditorContent editor={editor} placeholder={placeholder} />
       )}

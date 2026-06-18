@@ -63,9 +63,20 @@ export function TemplatesEmail() {
 
   async function remover(id: number, nome: string) {
     if (!confirm(`Remover o template "${nome}"?`)) return
-    await fetch(`/api/templates-email/${id}`, { method: 'DELETE', credentials: 'include' })
-    if (editandoId === id) novoTemplate()
-    setLista((l) => l.filter((t) => t.id !== id))
+    setErro(null)
+    try {
+      const res = await fetch(`/api/templates-email/${id}`, { method: 'DELETE', credentials: 'include' })
+      if (!res.ok) {
+        const d = await res.json().catch(() => null)
+        setErro(d?.erro ?? 'Erro ao remover template.')
+        return
+      }
+      if (editandoId === id) novoTemplate()
+      setLista((l) => l.filter((t) => t.id !== id))
+      setMsg('Template removido.')
+    } catch {
+      setErro('Erro de conexão ao remover template.')
+    }
   }
 
   if (carregando) return <p>Carregando...</p>
