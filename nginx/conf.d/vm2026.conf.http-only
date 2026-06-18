@@ -1,0 +1,18 @@
+# Config inicial — usada apenas na primeira subida, ANTES de existir certificado TLS.
+# Depois de emitir o certificado (passo 6 do DEPLOY.md), troque para vm2026.conf.
+#
+# Substitua "SEU_DOMINIO" pelo domínio real antes de usar.
+
+server {
+    listen 80;
+    server_name SEU_DOMINIO;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 200 "vm2026: aguardando emissão do certificado TLS\n";
+        add_header Content-Type text/plain;
+    }
+}
