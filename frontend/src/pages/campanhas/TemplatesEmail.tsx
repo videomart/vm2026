@@ -145,7 +145,17 @@ export function TemplatesEmail() {
           </div>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
             {editandoId && (
-              <button className="botao-secundario" type="button" onClick={novoTemplate}>Cancelar</button>
+              <>
+                <button
+                  className="botao-perigo"
+                  type="button"
+                  onClick={() => remover(editandoId, form.nome)}
+                  style={{ marginRight: 'auto' }}
+                >
+                  Remover template
+                </button>
+                <button className="botao-secundario" type="button" onClick={novoTemplate}>Cancelar</button>
+              </>
             )}
             <button className="botao" type="button" onClick={salvar} disabled={salvando}>
               {salvando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Criar template'}
