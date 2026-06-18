@@ -8,6 +8,9 @@ db/legado/*
 # Backups locais criados durante depuração
 *.bak
 
+# Dumps de banco gerados durante deploy (contêm dados reais de clientes)
+*.sql
+
 # Dependências e builds (frontend / backend)
 node_modules/
 dist/
