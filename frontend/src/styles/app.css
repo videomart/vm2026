@@ -3,6 +3,7 @@
 .layout-app {
   flex: 1;
   display: flex;
+  min-height: 100svh;
 }
 
 .topo-mobile {
@@ -22,6 +23,14 @@
   padding: 20px 12px;
   background: var(--bg);
   border-right: 1px solid var(--border);
+  /* Fica fixa na altura da tela (sticky no topo), independente da altura do
+     conteúdo central — antes crescia junto com grids grandes (ex.: 300 itens),
+     empurrando o rodapé/botão "Sair" para fora da área visível, exigindo
+     scroll vertical da página inteira só para acessá-lo. */
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow-y: auto;
 }
 
 .barra-lateral-topo {
