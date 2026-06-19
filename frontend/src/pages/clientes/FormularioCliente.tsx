@@ -392,7 +392,7 @@ export function FormularioCliente() {
           </h3>
 
           {/* Formulário novo contato */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', alignItems: 'end', marginBottom: '12px' }}>
+          <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 1fr auto', gap: '8px', alignItems: 'end', marginBottom: '12px' }}>
             <div className="campo" style={{ margin: 0 }}>
               <label>Nome *</label>
               <input

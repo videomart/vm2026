@@ -397,7 +397,7 @@ export function FormularioProposta() {
           </div>
 
           {/* Linha 3: Condições + Observações — cada uma metade da linha, alturas iguais */}
-          <div className="campo campo-largo" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px', alignItems: 'stretch' }}>
+          <div className="campo campo-largo grade-2col-responsiva">
             <div className="campo" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column' }}>
               <label htmlFor="condicoes">Condições de pagamento</label>
               {!somenteLeitura && (

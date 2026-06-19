@@ -91,7 +91,7 @@ export function TemplatesEmail() {
       {msg && <p className="alerta-sucesso" role="status">{msg}</p>}
       {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '20px' }}>
+      <div className="painel-mestre-detalhe" style={{ gridTemplateColumns: '240px 1fr' }}>
         {/* Lista de templates */}
         <div>
           <button className="botao" type="button" onClick={novoTemplate} style={{ width: '100%', marginBottom: '10px' }}>

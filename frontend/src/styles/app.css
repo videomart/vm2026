@@ -474,6 +474,44 @@
   }
 }
 
+.grade-2col-responsiva {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 700px) {
+  .grade-2col-responsiva {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Várias telas de formulário definem grid-template-columns fixo via style inline
+   (ex.: "2fr 1fr 1fr", "1fr 1fr") na própria .grade-formulario, para alinhar uma linha
+   inteira de campos lado a lado. Em telas estreitas isso esmagava os campos — aqui
+   força 1 coluna independente da combinação usada, sem precisar de uma classe
+   utilitária por combinação. Não afeta sub-grids menores (ex.: Cidade/UF/CEP), que
+   continuam lado a lado por serem campos curtos. */
+@media (max-width: 600px) {
+  .grade-formulario[style*='grid-template-columns'] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Layout mestre-detalhe (lista à esquerda + formulário/editor à direita) usado em
+   Templates de e-mail e Contas SMTP — empilha em telas estreitas. */
+.painel-mestre-detalhe {
+  display: grid;
+  gap: 20px;
+}
+
+@media (max-width: 700px) {
+  .painel-mestre-detalhe {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .barra-acoes-formulario {
   display: flex;
   gap: 8px;

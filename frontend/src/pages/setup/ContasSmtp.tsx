@@ -127,7 +127,7 @@ export function ContasSmtp() {
       {msg && <p className="alerta-sucesso" role="status">{msg}</p>}
       {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div className="painel-mestre-detalhe" style={{ gridTemplateColumns: '1fr 1fr' }}>
         {/* Lista */}
         <div>
           <button className="botao" type="button" onClick={nova} style={{ width: '100%', marginBottom: '10px' }}>
