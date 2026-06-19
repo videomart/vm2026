@@ -53,6 +53,29 @@
   flex-shrink: 0;
 }
 
+.barra-lateral-topo h1:has(.logo-empresa)::before,
+.topo-mobile-titulo:has(.logo-empresa)::before,
+.cartao-login h1:has(.logo-empresa)::before {
+  display: none;
+}
+
+.logo-empresa {
+  height: 22px;
+  width: auto;
+  max-width: 120px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.topo-mobile-titulo .logo-empresa {
+  height: 18px;
+}
+
+.cartao-login h1 .logo-empresa {
+  height: 28px;
+  max-width: 160px;
+}
+
 .botao-fechar-menu {
   display: none;
 }

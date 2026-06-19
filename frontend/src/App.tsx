@@ -29,6 +29,7 @@ import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
 import { ListaContasReceber } from './pages/contasReceber/ListaContasReceber'
 import { ListaAssinaturas } from './pages/contasReceber/ListaAssinaturas'
+import { LogoEmpresa } from './components/LogoEmpresa'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
@@ -102,14 +103,14 @@ function App() {
         >
           ☰
         </button>
-        <span className="topo-mobile-titulo">vm2026</span>
+        <span className="topo-mobile-titulo"><LogoEmpresa />vm2026</span>
       </header>
 
       {menuAberto && <div className="overlay-menu" onClick={() => setMenuAberto(false)} />}
 
       <aside className={`barra-lateral${menuAberto ? ' aberta' : ''}`}>
         <div className="barra-lateral-topo">
-          <h1>vm2026</h1>
+          <h1><LogoEmpresa />vm2026</h1>
           <button
             className="botao-fechar-menu"
             type="button"

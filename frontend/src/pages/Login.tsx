@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { LogoEmpresa } from '../components/LogoEmpresa'
 
 export type Usuario = {
   id: number
@@ -49,7 +50,7 @@ export function Login({ onLogin }: LoginProps) {
   return (
     <div className="tela-login">
       <div className="cartao-login">
-        <h1>vm2026</h1>
+        <h1><LogoEmpresa />vm2026</h1>
         <h2>Entrar</h2>
         <form onSubmit={handleSubmit}>
           <div className="campo">
