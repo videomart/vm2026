@@ -50,9 +50,15 @@ clientesRouter.get('/', async (req, res) => {
     condicoes.push('c.ativo = 1')
   }
   if (busca) {
-    condicoes.push('(c.razao_social LIKE ? OR c.nome_fantasia LIKE ? OR c.cnpj_cpf LIKE ?)')
+    condicoes.push(`(
+      c.razao_social LIKE ? OR c.nome_fantasia LIKE ? OR c.cnpj_cpf LIKE ? OR c.email LIKE ?
+      OR EXISTS (
+        SELECT 1 FROM contatos ct
+        WHERE ct.cliente_id = c.id AND ct.ativo = 1 AND (ct.nome LIKE ? OR ct.email LIKE ?)
+      )
+    )`)
     const termo = `%${busca}%`
-    parametros.push(termo, termo, termo)
+    parametros.push(termo, termo, termo, termo, termo, termo)
   }
   if (categoriaId) {
     condicoes.push('c.categoria_cliente_id = ?')

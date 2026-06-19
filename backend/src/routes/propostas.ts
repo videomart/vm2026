@@ -235,6 +235,25 @@ propostasRouter.post('/:id/status', async (req, res) => {
   }
 })
 
+// Exclusão permanente — só permitida para propostas recusadas (perdidas). Propostas
+// abertas/aprovadas não podem ser excluídas (evita perder histórico em negociação),
+// e convertidas nunca (já geraram venda/conta a receber).
+propostasRouter.delete('/:id', async (req, res) => {
+  try {
+    const [existRows] = await pool.query('SELECT status FROM propostas WHERE id = ?', [req.params.id])
+    const proposta = (existRows as any[])[0]
+    if (!proposta) return res.status(404).json({ erro: 'Proposta não encontrada.' })
+    if (proposta.status !== 'recusada') {
+      return res.status(409).json({ erro: 'Só é possível excluir propostas recusadas (perdidas).' })
+    }
+
+    await pool.query('DELETE FROM propostas WHERE id = ?', [req.params.id])
+    res.status(204).end()
+  } catch {
+    res.status(500).json({ erro: 'Erro ao excluir proposta.' })
+  }
+})
+
 // ------------------------------------------------------------------
 // POST /:id/converter — converte em venda + conta a receber
 // ------------------------------------------------------------------

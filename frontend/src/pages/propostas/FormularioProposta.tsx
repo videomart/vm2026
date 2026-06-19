@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { dataParaInput } from '../../utils/formatar'
 import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
 import { NavegadorRegistro } from '../../components/NavegadorRegistro'
 import { ModalEmailProposta } from './ModalEmailProposta'
+import { ModalEditarCliente } from './ModalEditarCliente'
 import type { ItemFormulario, Proposta, StatusProposta } from './types'
 import type { Cliente } from '../clientes/types'
 import type { Produto } from '../produtos/types'
@@ -61,7 +62,6 @@ export function FormularioProposta() {
   const editando = Boolean(id)
 
   // dados auxiliares
-  const [clientes, setClientes] = useState<Cliente[]>([])
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [usuarios, setUsuarios] = useState<UsuarioSimples[]>([])
   const [usuarioAtual, setUsuarioAtual] = useState<UsuarioSimples | null>(null)
@@ -74,6 +74,12 @@ export function FormularioProposta() {
 
   // campos do cabeçalho
   const [clienteId, setClienteId] = useState('')
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null)
+  const [buscaCliente, setBuscaCliente] = useState('')
+  const [resultadoBuscaCliente, setResultadoBuscaCliente] = useState<Cliente[]>([])
+  const [buscandoCliente, setBuscandoCliente] = useState(false)
+  const [modalEditarCliente, setModalEditarCliente] = useState(false)
+  const buscaClienteTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [vendedorId, setVendedorId] = useState('')
   const [data, setData] = useState(new Date().toISOString().slice(0, 10))
   const [validade, setValidade] = useState('')
@@ -89,39 +95,45 @@ export function FormularioProposta() {
   const [erro, setErro] = useState<string | null>(null)
   const [mensagem, setMensagem] = useState<string | null>(null)
 
-  async function recarregarClientes() {
-    const res = await fetch('/api/clientes', { credentials: 'include' })
-    const data = await res.json()
-    setClientes(data.clientes ?? [])
-  }
-
-  // recarrega lista de clientes ao retornar de aba de novo cliente
+  // Busca de clientes com debounce — por nome/razão social, CNPJ, e-mail do
+  // cliente OU nome/e-mail de qualquer contato dele (mesma busca amplificada
+  // usada na lista de Clientes).
   useEffect(() => {
-    function onFocus() { recarregarClientes() }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [])
+    if (!buscaCliente.trim()) { setResultadoBuscaCliente([]); return }
+    if (buscaClienteTimer.current) clearTimeout(buscaClienteTimer.current)
+    buscaClienteTimer.current = setTimeout(async () => {
+      setBuscandoCliente(true)
+      try {
+        const r = await fetch(`/api/clientes?q=${encodeURIComponent(buscaCliente)}`, { credentials: 'include' })
+        const d = await r.json()
+        setResultadoBuscaCliente((d.clientes ?? []).slice(0, 15))
+      } catch {
+        // silencioso
+      } finally {
+        setBuscandoCliente(false)
+      }
+    }, 300)
+    return () => { if (buscaClienteTimer.current) clearTimeout(buscaClienteTimer.current) }
+  }, [buscaCliente])
 
   // carrega dados auxiliares + proposta (se editando)
   useEffect(() => {
     async function init() {
       try {
-        const [resMe, resClientes, resProdutos, resUsuarios, resCondicoes, resSetup] = await Promise.all([
+        const [resMe, resProdutos, resUsuarios, resCondicoes, resSetup] = await Promise.all([
           fetch('/api/auth/me', { credentials: 'include' }),
-          fetch('/api/clientes', { credentials: 'include' }),
           fetch('/api/produtos', { credentials: 'include' }),
           fetch('/api/auth/usuarios', { credentials: 'include' }),
           fetch('/api/setup/condicoes', { credentials: 'include' }),
           fetch('/api/setup', { credentials: 'include' }),
         ])
-        const [me, clientesData, produtosData, usuariosData, condicoesData, setupData] = await Promise.all([
-          resMe.json(), resClientes.json(), resProdutos.json(), resUsuarios.json(), resCondicoes.json(), resSetup.json(),
+        const [me, produtosData, usuariosData, condicoesData, setupData] = await Promise.all([
+          resMe.json(), resProdutos.json(), resUsuarios.json(), resCondicoes.json(), resSetup.json(),
         ])
 
         const dias = Number(setupData?.setup?.proposta_validade_dias ?? 30)
         setValidadeDias(dias)
         setUsuarioAtual(me.usuario)
-        setClientes(clientesData.clientes ?? [])
         setProdutos(produtosData.produtos ?? [])
         setUsuarios(usuariosData.usuarios ?? [])
         setListaCondicoes(condicoesData.condicoes ?? [])
@@ -148,6 +160,12 @@ export function FormularioProposta() {
           setProposta(p)
           setClienteId(String(p.cliente_id))
           setVendedorId(String(p.vendedor_id))
+
+          const resCliente = await fetch(`/api/clientes/${p.cliente_id}`, { credentials: 'include' })
+          if (resCliente.ok) {
+            const { cliente: c } = await resCliente.json()
+            setClienteSelecionado(c)
+          }
           setData(dataParaInput(p.data))
           setValidade(dataParaInput(p.validade))
           setCondicoes(stripHtml(p.condicoes_pagamento))
@@ -217,10 +235,12 @@ export function FormularioProposta() {
     }
   }
 
-  function onClienteChange(novoClienteId: string) {
-    setClienteId(novoClienteId)
-    const cliente = clientes.find((c) => String(c.id) === novoClienteId)
-    if (cliente?.condicoes_pagamento) {
+  function onClienteChange(cliente: Cliente) {
+    setClienteId(String(cliente.id))
+    setClienteSelecionado(cliente)
+    setBuscaCliente('')
+    setResultadoBuscaCliente([])
+    if (cliente.condicoes_pagamento) {
       // tenta encontrar o corpo da condição cadastrada que casa com a do cliente
       const cond = listaCondicoes.find((c) => c.descricao === cliente.condicoes_pagamento)
       setCondicoes(cond?.corpo ?? cliente.condicoes_pagamento)
@@ -341,31 +361,76 @@ export function FormularioProposta() {
 
           {/* Linha 1: Cliente (span 2) + Vendedor */}
           <div className="campo" style={{ gridColumn: 'span 2' }}>
-            <label htmlFor="cliente_id">Cliente *</label>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <select
-                id="cliente_id"
-                value={clienteId}
-                onChange={(e) => onClienteChange(e.target.value)}
-                required
-                disabled={somenteLeitura}
-                style={{ flex: 1 }}
-              >
-                <option value="">— Selecione —</option>
-                {clientes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.razao_social}{c.nome_fantasia ? ` / ${c.nome_fantasia}` : ''}</option>
-                ))}
-              </select>
-              {!somenteLeitura && (
-                <button
-                  type="button"
-                  className="botao-secundario"
-                  title="Cadastrar novo cliente"
-                  onClick={() => window.open('/clientes/novo', '_blank')}
-                  style={{ whiteSpace: 'nowrap', alignSelf: 'stretch' }}
-                >+ Cliente</button>
-              )}
-            </div>
+            <label htmlFor="cliente_busca">Cliente *</label>
+            {!somenteLeitura && !clienteId && (
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="cliente_busca"
+                  placeholder="Digite razão social, contato ou e-mail para buscar..."
+                  value={buscaCliente}
+                  onChange={(e) => setBuscaCliente(e.target.value)}
+                  autoComplete="off"
+                  required={!clienteId}
+                />
+                {buscandoCliente && (
+                  <span style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text)' }}>
+                    buscando...
+                  </span>
+                )}
+                {resultadoBuscaCliente.length > 0 && (
+                  <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '4px', marginTop: '4px', maxHeight: '220px', overflowY: 'auto', position: 'absolute', width: '100%', zIndex: 10 }}>
+                    {resultadoBuscaCliente.map((c) => (
+                      <div
+                        key={c.id}
+                        style={{ padding: '7px 12px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}
+                        onClick={() => onClienteChange(c)}
+                      >
+                        <span style={{ fontSize: '13px' }}>{c.razao_social}{c.nome_fantasia ? ` / ${c.nome_fantasia}` : ''}</span>
+                        <span style={{ fontSize: '11px', color: 'var(--text)' }}>{c.email ?? 'sem e-mail'}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {buscaCliente && !buscandoCliente && resultadoBuscaCliente.length === 0 && (
+                  <p style={{ fontSize: '12px', color: 'var(--text)', marginTop: '4px' }}>Nenhum cliente encontrado.</p>
+                )}
+              </div>
+            )}
+            {(clienteId || somenteLeitura) && (
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <div style={{ flex: 1, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 'var(--raio)', background: 'var(--bg-elevado)' }}>
+                  {clienteSelecionado
+                    ? `${clienteSelecionado.razao_social}${clienteSelecionado.nome_fantasia ? ` / ${clienteSelecionado.nome_fantasia}` : ''}`
+                    : 'Carregando...'}
+                </div>
+                {!somenteLeitura && (
+                  <>
+                    <button
+                      type="button"
+                      className="botao-secundario"
+                      title="Editar dados do cliente"
+                      onClick={() => setModalEditarCliente(true)}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >Editar</button>
+                    <button
+                      type="button"
+                      className="botao-secundario"
+                      title="Trocar cliente"
+                      onClick={() => { setClienteId(''); setClienteSelecionado(null) }}
+                      style={{ whiteSpace: 'nowrap' }}
+                    >Trocar</button>
+                  </>
+                )}
+              </div>
+            )}
+            {!somenteLeitura && !clienteId && (
+              <button
+                type="button"
+                className="botao-link"
+                onClick={() => window.open('/clientes/novo', '_blank')}
+                style={{ marginTop: '4px', fontSize: '12px' }}
+              >+ Cadastrar novo cliente</button>
+            )}
           </div>
           <div className="campo">
             <label htmlFor="vendedor_id">Vendedor *</label>
@@ -638,6 +703,17 @@ export function FormularioProposta() {
           clienteEmail={proposta.cliente_email ?? null}
           clienteNome={proposta.cliente_nome ?? ''}
           onFechar={() => setModalEmail(false)}
+        />
+      )}
+
+      {modalEditarCliente && clienteSelecionado && (
+        <ModalEditarCliente
+          cliente={clienteSelecionado}
+          onFechar={() => setModalEditarCliente(false)}
+          onSalvo={(clienteAtualizado) => {
+            setClienteSelecionado(clienteAtualizado)
+            setModalEditarCliente(false)
+          }}
         />
       )}
     </section>

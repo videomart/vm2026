@@ -50,6 +50,17 @@ export function ListaPropostas() {
 
   useEffect(() => { carregar() }, [filtroStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  async function excluir(p: Proposta) {
+    if (!confirm(`Excluir definitivamente a proposta #${p.id} (${p.cliente_nome})? Esta ação não pode ser desfeita.`)) return
+    const res = await fetch(`/api/propostas/${p.id}`, { method: 'DELETE', credentials: 'include' })
+    if (res.ok) {
+      carregar()
+    } else {
+      const d = await res.json().catch(() => null)
+      alert(d?.erro ?? 'Erro ao excluir proposta.')
+    }
+  }
+
   return (
     <section>
       <div className="cabecalho-secao">
@@ -113,6 +124,9 @@ export function ListaPropostas() {
                         <button className="botao-link" type="button" onClick={() => abrirProposta(p)}>
                           {p.status === 'aberta' ? 'Editar' : 'Ver'}
                         </button>
+                        {p.status === 'recusada' && (
+                          <button className="botao-perigo" type="button" onClick={() => excluir(p)}>Excluir</button>
+                        )}
                       </div>
                     </td>
                   </tr>
