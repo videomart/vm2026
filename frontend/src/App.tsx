@@ -159,6 +159,7 @@ function App() {
           <button className="botao-secundario" type="button" onClick={handleLogout}>
             Sair
           </button>
+          <span className="versao-app" title="Versão/release do build atual">{__APP_VERSION__}</span>
         </div>
       </aside>
 

@@ -16,7 +16,8 @@ git pull
 echo "==> derrubando containers de DEV, se existirem por engano"
 docker compose down --remove-orphans 2>/dev/null || true
 
-echo "==> build sem cache (garante que o build novo do frontend/backend entra na imagem)"
+export APP_VERSION="$(git rev-parse --short HEAD) ($(git log -1 --format=%cd --date=format:%Y-%m-%d))"
+echo "==> build sem cache (garante que o build novo do frontend/backend entra na imagem) — versão: $APP_VERSION"
 $COMPOSE build --no-cache backend
 
 echo "==> subindo containers de produção"
