@@ -52,20 +52,41 @@ campanhasRouter.get('/grupos/:id', async (req, res) => {
 
 // E-mails avulsos (importação por texto/arquivo) ───────────────────────────────
 
+// Aceita, por linha, "Nome <email@x.com>" (com nome) ou apenas "email@x.com" (sem
+// nome) — e também o uso antigo de colar vários e-mails soltos numa linha só,
+// separados por vírgula/espaço, nesse caso sem nome.
+function extrairNomeEEmails(texto: string): Map<string, string | null> {
+  const regexComNome = /^\s*(.*?)\s*<\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\s*>\s*$/
+  const regexEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
+  const resultado = new Map<string, string | null>()
+
+  for (const linha of texto.split('\n')) {
+    const comNome = linha.match(regexComNome)
+    if (comNome) {
+      const email = comNome[2].toLowerCase().trim()
+      const nome = comNome[1].trim() || null
+      resultado.set(email, nome)
+      continue
+    }
+    for (const email of linha.match(regexEmail) ?? []) {
+      const chave = email.toLowerCase().trim()
+      if (!resultado.has(chave)) resultado.set(chave, null)
+    }
+  }
+  return resultado
+}
+
 campanhasRouter.post('/grupos/:id/emails-extra', requireAdmin, async (req, res) => {
   try {
     const { texto } = req.body as { texto: string }
     if (!texto?.trim()) return res.status(400).json({ erro: 'Informe ao menos um e-mail.' })
 
-    const regexEmail = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
-    const encontrados = texto.match(regexEmail) ?? []
-    const unicos = [...new Set(encontrados.map((e) => e.toLowerCase().trim()))]
+    const encontrados = extrairNomeEEmails(texto)
+    if (!encontrados.size) return res.status(400).json({ erro: 'Nenhum e-mail válido encontrado no texto.' })
 
-    if (!unicos.length) return res.status(400).json({ erro: 'Nenhum e-mail válido encontrado no texto.' })
-
-    const valores = unicos.map((email) => [Number(req.params.id), email])
+    const valores = [...encontrados.entries()].map(([email, nome]) => [Number(req.params.id), email, nome])
     await pool.query(
-      'INSERT IGNORE INTO grupo_emails_extra (grupo_id, email) VALUES ?',
+      'INSERT INTO grupo_emails_extra (grupo_id, email, nome) VALUES ? ON DUPLICATE KEY UPDATE nome = COALESCE(VALUES(nome), nome)',
       [valores],
     )
 
@@ -74,7 +95,7 @@ campanhasRouter.post('/grupos/:id/emails-extra', requireAdmin, async (req, res) 
       [req.params.id],
     )
 
-    res.json({ ok: true, total_encontrados: unicos.length, emailsExtra: rows })
+    res.json({ ok: true, total_encontrados: encontrados.size, emailsExtra: rows })
   } catch {
     res.status(500).json({ erro: 'Erro ao importar e-mails.' })
   }

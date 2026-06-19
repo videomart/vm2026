@@ -378,10 +378,14 @@ export function GruposEnvio() {
                 <label style={{ fontSize: '13px', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
                   Importar lista de e-mails
                 </label>
+                <p style={{ fontSize: '12px', color: 'var(--text)', marginBottom: '6px' }}>
+                  Um por linha. Para incluir o nome, use o formato <code>Nome &lt;email@dominio.com&gt;</code> —
+                  sem nome, basta colar o e-mail (aceita também vários soltos numa linha, separados por vírgula ou espaço).
+                </p>
                 <textarea
                   className="sem-uppercase"
                   rows={3}
-                  placeholder="Cole e-mails separados por vírgula, espaço ou quebra de linha..."
+                  placeholder={'João Silva <joao@empresa.com>\nmaria@empresa.com'}
                   value={textoImportacao}
                   onChange={(e) => setTextoImportacao(e.target.value)}
                   style={{ width: '100%', resize: 'vertical' }}
@@ -409,6 +413,7 @@ export function GruposEnvio() {
                   <table className="tabela">
                     <thead>
                       <tr>
+                        <th>Nome</th>
                         <th>E-mail importado</th>
                         <th style={{ width: '80px' }}></th>
                       </tr>
@@ -416,6 +421,7 @@ export function GruposEnvio() {
                     <tbody>
                       {emailsExtra.map((e) => (
                         <tr key={e.id}>
+                          <td>{e.nome ?? <em style={{ opacity: 0.5 }}>sem nome</em>}</td>
                           <td>{e.email}</td>
                           <td>
                             <button className="botao-perigo" type="button" onClick={() => removerEmailExtra(g.id, e.id)}>
