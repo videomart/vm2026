@@ -57,16 +57,22 @@ openssl rand -hex 32   # cole o resultado em JWT_SECRET
 
 ## 3. Subir os containers
 
-O build é feito a partir da raiz do projeto (o backend empacota o frontend também):
+O build é feito a partir da raiz do projeto (o backend empacota o frontend também).
+`docker-compose.yml` (sem sufixo) **é o de produção** nesta VPS — de propósito, para que
+o comando simples, sem `-f`, já seja sempre seguro de rodar aqui (o de desenvolvimento é
+o que tem sufixo: `docker-compose.dev.yml`, só usado na máquina local).
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d --build
-docker compose -f docker-compose.prod.yml ps
+docker compose up -d --build
+docker compose ps
 ```
+
+Para deploys futuros (depois do primeiro setup), prefira `./scripts/deploy.sh` — já faz
+git pull + build sem cache + aplica migrations pendentes automaticamente.
 
 Acompanhe os logs do backend até ele terminar de subir:
 ```bash
-docker compose -f docker-compose.prod.yml logs -f backend
+docker compose logs -f backend
 ```
 (`Ctrl+C` para sair do log depois de ver "vm2026 backend ouvindo na porta 3001")
 
@@ -116,7 +122,7 @@ scp vm2026_producao.sql usuario@<IP_DA_VPS>:~/vm2026/
 
 Importar dentro do container do banco de produção:
 ```bash
-docker compose -f docker-compose.prod.yml exec -T db \
+docker compose exec -T db \
   mysql -u vm2026 -p"$(grep MYSQL_PASSWORD .env | cut -d= -f2)" vm2026 < vm2026_producao.sql
 ```
 
@@ -124,7 +130,7 @@ docker compose -f docker-compose.prod.yml exec -T db \
 
 Se o dump já trouxe usuários ativos, pule esta etapa. Senão:
 ```bash
-docker compose -f docker-compose.prod.yml exec backend npm run seed:admin
+docker compose exec backend npm run seed:admin
 ```
 
 ## 9. Cadastrar as contas SMTP (se não vieram no dump)

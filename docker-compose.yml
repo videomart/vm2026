@@ -1,21 +1,20 @@
-services:
-  frontend:
-    build:
-      context: ./frontend
-    ports:
-      - "${FRONTEND_PORT}:5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
-    restart: unless-stopped
+# Esta VPS já hospeda outro sistema (tvplay-web) com nginx-proxy + acme-companion
+# rodando nas portas 80/443. Em vez de subir nosso próprio Nginx/certbot, conectamos
+# nossos containers à rede do nginx-proxy existente e deixamos ele detectar e gerar
+# o virtual host + certificado Let's Encrypt automaticamente via variáveis de ambiente
+# (VIRTUAL_HOST / LETSENCRYPT_HOST). Ver DEPLOY.md para o passo a passo completo.
+#
+# Build a partir da RAIZ do projeto (não de ./backend) — o backend/Dockerfile.prod
+# também empacota o build do frontend e o serve via Express (express.static),
+# evitando o problema de rotear /api e / para containers diferentes no mesmo domínio.
 
+services:
   backend:
     build:
-      context: ./backend
-    ports:
-      - "${BACKEND_PORT}:3001"
+      context: .
+      dockerfile: backend/Dockerfile.prod
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
     environment:
       PORT: 3001
       DB_HOST: db
@@ -34,11 +33,14 @@ services:
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
       FRONTEND_URL: ${FRONTEND_URL}
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+      VIRTUAL_HOST: ${DOMINIO}
+      LETSENCRYPT_HOST: ${DOMINIO}
+      VIRTUAL_PORT: 3001
     depends_on:
       - db
+    networks:
+      - default
+      - tvplay-web_default
     restart: unless-stopped
 
   db:
@@ -49,12 +51,37 @@ services:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-    ports:
-      - "${DB_PORT}:3306"
     volumes:
       - db_data:/var/lib/mysql
-      - ./db/init:/docker-entrypoint-initdb.d
     restart: unless-stopped
+    # Sem "ports": o MySQL não deve ficar exposto à internet, só acessível pela
+    # rede interna do compose. Também NÃO entra na rede tvplay-web_default —
+    # fica isolado, só "backend" e "adminer" o alcançam via nome "db".
+
+  adminer:
+    # phpmyadmin/phpmyadmin só publica imagem amd64 (sem build ARM64) — em VPS ARM64
+    # falha com "exec format error" mesmo com emulação. Adminer tem imagem oficial
+    # multi-arch (inclui arm64) e cobre a mesma necessidade (consultar/editar tabelas).
+    image: adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      VIRTUAL_HOST: phpmyadmin-vm2026.${DOMINIO_BASE}
+      LETSENCRYPT_HOST: phpmyadmin-vm2026.${DOMINIO_BASE}
+      VIRTUAL_PORT: 8080
+    depends_on:
+      - db
+    networks:
+      - default
+      - tvplay-web_default
+    restart: unless-stopped
+    # Subdomínio próprio (não path) — nginx-proxy roteia por Host de forma confiável,
+    # diferente de VIRTUAL_PATH para containers diferentes no mesmo host. Sem auth_basic
+    # própria aqui (não temos Nginx nosso) — proteger com senha forte do MySQL e
+    # considerar restringir por firewall/IP se exposto à internet por muito tempo.
+
+networks:
+  tvplay-web_default:
+    external: true
 
 volumes:
   db_data:
