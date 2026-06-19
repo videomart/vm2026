@@ -90,6 +90,25 @@ async function registrarUsoConta(contaId: number) {
   )
 }
 
+// Configuração de ritmo de envio (Configurações > Setup) — recomendação do suporte
+// da Hostinger após bloqueio por ratelimit ("4.7.1 Ratelimit ... exceeded") em
+// campanhas grandes disparadas em sequência contínua. Duas estratégias combinadas:
+//   - intervalo: pausa entre CADA e-mail (mín. recomendado pelo suporte: 30-60s)
+//   - lote: após enviar N e-mails, pausa mais longa (mín. recomendado: 5-10 min)
+//     antes de continuar — simula "distribuir ao longo do dia" sem precisar de
+//     intervenção manual.
+async function configEnvio() {
+  const [rows] = await pool.query(
+    'SELECT envio_intervalo_segundos, envio_lote_tamanho, envio_lote_pausa_segundos FROM setup WHERE id = 1',
+  ) as any[]
+  const s = (rows as any[])[0]
+  return {
+    intervaloMs: Number(s?.envio_intervalo_segundos ?? 10) * 1000,
+    loteTamanho: Number(s?.envio_lote_tamanho ?? 25),
+    lotePausaMs: Number(s?.envio_lote_pausa_segundos ?? 300) * 1000,
+  }
+}
+
 export async function enviarEmail(opts: {
   to: string | string[]
   subject: string
@@ -166,13 +185,15 @@ export async function processarCampanhaEmBackground(campanhaId: number, assunto:
       socketTimeout: 30000,
     })]))
 
-    // Espaçamento entre envios, mesmo distribuindo entre contas. Valor conservador para
-    // não disparar a proteção antispam de provedores (Hostinger já suspendeu as contas
-    // por "atividade suspeita" com envio de volume simultâneo entre múltiplas caixas
-    // novas) — aumentar com cautela, e só depois de um período de aquecimento.
-    const intervaloMs = 10000
+    // Espaçamento entre envios + pausa longa a cada lote — configurável em
+    // Configurações > Setup (ver configEnvio). Valores conservadores por padrão para
+    // não disparar a proteção antispam de provedores (Hostinger já suspendeu/bloqueou
+    // contas por "atividade suspeita"/ratelimit em campanhas grandes em sequência
+    // contínua) — aumentar com cautela, e só depois de um período de aquecimento.
+    const { intervaloMs, loteTamanho, lotePausaMs } = await configEnvio()
     let indiceConta = 0
     let processados = 0
+    let noLoteAtual = 0
 
     for (const dest of pendentes as any[]) {
       // pula contas que já esgotaram o saldo do dia
@@ -215,7 +236,15 @@ export async function processarCampanhaEmBackground(campanhaId: number, assunto:
 
       indiceConta = (indiceConta + 1) % contas.length
       processados++
-      if (processados < pendentes.length) {
+      noLoteAtual++
+
+      if (processados >= pendentes.length) break
+
+      if (loteTamanho > 0 && noLoteAtual >= loteTamanho) {
+        console.log(`Campanha ${campanhaId}: lote de ${loteTamanho} concluído, pausando ${lotePausaMs / 1000}s antes de continuar...`)
+        noLoteAtual = 0
+        await new Promise((r) => setTimeout(r, lotePausaMs))
+      } else {
         await new Promise((r) => setTimeout(r, intervaloMs))
       }
     }

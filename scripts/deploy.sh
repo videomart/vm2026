@@ -22,5 +22,11 @@ $COMPOSE build --no-cache backend
 echo "==> subindo containers de produção"
 $COMPOSE up -d
 
+echo "==> aplicando migrations pendentes (todas são idempotentes — IF NOT EXISTS)"
+echo "    evita o erro 'Unknown column' quando uma migration nova só foi aplicada em dev"
+for f in db/migrations/*.sql; do
+  cat "$f" | $COMPOSE exec -T db mysql -u "${MYSQL_USER:-vm2026}" -p"$(grep MYSQL_PASSWORD .env | cut -d= -f2)" "${MYSQL_DATABASE:-vm2026}"
+done
+
 echo "==> status final"
 $COMPOSE ps
