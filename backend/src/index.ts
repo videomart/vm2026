@@ -19,6 +19,7 @@ import { templatesEmailRouter } from './routes/templatesEmail.js'
 import { campanhasRouter } from './routes/campanhas.js'
 import { contasReceberRouter } from './routes/contasReceber.js'
 import { contasSmtpRouter } from './routes/contasSmtp.js'
+import { retomarCampanhasTravadas } from './email.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -71,4 +72,5 @@ if (fs.existsSync(pastaFrontend)) {
 
 app.listen(port, () => {
   console.log(`vm2026 backend ouvindo na porta ${port}`)
+  retomarCampanhasTravadas()
 })

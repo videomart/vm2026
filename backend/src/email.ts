@@ -231,3 +231,36 @@ export async function processarCampanhaEmBackground(campanhaId: number, assunto:
     )
   }
 }
+
+// Ao reiniciar (deploy, crash, restart de container), qualquer campanha que ficou
+// presa em "processando" tinha seu envio interrompido sem deixar erro registrado —
+// o loop de processarCampanhaEmBackground só existe na memória do processo Node, que
+// morre junto com o container. Chamado uma vez na inicialização do backend para
+// retomar automaticamente esses envios pendentes, sem depender de alguém notar e
+// clicar em "Retomar" manualmente.
+export async function retomarCampanhasTravadas() {
+  try {
+    const [campanhas] = await pool.query(
+      `SELECT id, assunto, corpo FROM campanhas_email WHERE status_processamento = 'processando'`,
+    ) as any[]
+
+    for (const c of campanhas as any[]) {
+      const [pendentesRows] = await pool.query(
+        `SELECT COUNT(*) AS total FROM campanha_envios WHERE campanha_id = ? AND status = 'pendente'`,
+        [c.id],
+      ) as any[]
+      if (!pendentesRows[0].total) {
+        await pool.query(
+          `UPDATE campanhas_email SET status_processamento = 'concluida', enviado_em = NOW() WHERE id = ?`,
+          [c.id],
+        )
+        continue
+      }
+      console.log(`Retomando campanha ${c.id} travada em "processando" (${pendentesRows[0].total} pendentes)...`)
+      processarCampanhaEmBackground(c.id, c.assunto, c.corpo)
+        .catch((e) => console.error(`Erro ao retomar campanha ${c.id} automaticamente:`, e))
+    }
+  } catch (e) {
+    console.error('Erro ao verificar campanhas travadas na inicialização:', e)
+  }
+}
