@@ -613,6 +613,10 @@
   transition: background-color 0.1s ease;
 }
 
+.tabela tbody tr:nth-child(even) {
+  background: var(--bg-suave);
+}
+
 .tabela tbody tr:hover {
   background: var(--bg-elevado);
 }
