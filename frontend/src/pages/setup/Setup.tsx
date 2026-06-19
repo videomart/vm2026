@@ -17,6 +17,9 @@ type SetupData = {
   smtp_pass: string
   smtp_from: string
   smtp_limite_hora: string
+  envio_intervalo_segundos: string
+  envio_lote_tamanho: string
+  envio_lote_pausa_segundos: string
 }
 
 type Cotacao = { id: number; data: string; valor: string; fonte: string | null } | null
@@ -50,6 +53,9 @@ const SETUP_VAZIO: SetupData = {
   smtp_pass: '',
   smtp_from: '',
   smtp_limite_hora: '100',
+  envio_intervalo_segundos: '10',
+  envio_lote_tamanho: '25',
+  envio_lote_pausa_segundos: '300',
 }
 
 function paraForm(s: any): SetupData {
@@ -70,6 +76,9 @@ function paraForm(s: any): SetupData {
     smtp_pass: s.smtp_pass ?? '',
     smtp_from: s.smtp_from ?? '',
     smtp_limite_hora: String(s.smtp_limite_hora ?? '100'),
+    envio_intervalo_segundos: String(s.envio_intervalo_segundos ?? '10'),
+    envio_lote_tamanho: String(s.envio_lote_tamanho ?? '25'),
+    envio_lote_pausa_segundos: String(s.envio_lote_pausa_segundos ?? '300'),
   }
 }
 
@@ -91,60 +100,62 @@ export function Setup() {
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
-  const [logoPreview, setLogoPreview] = useState<string | null>(null)
+  const [logoPdfPreview, setLogoPdfPreview] = useState<string | null>(null)
+  const [logoInterfacePreview, setLogoInterfacePreview] = useState<string | null>(null)
   const [salvandoLogo, setSalvandoLogo] = useState(false)
 
   useEffect(() => {
     Promise.all([
       fetch('/api/setup', { credentials: 'include' }),
       fetch('/api/setup/cotacao', { credentials: 'include' }),
-      fetch('/api/setup/logo', { credentials: 'include' }),
+      fetch('/api/setup/logo/pdf', { credentials: 'include' }),
+      fetch('/api/setup/logo/interface', { credentials: 'include' }),
     ])
-      .then(async ([rs, rco, rlo]) => {
+      .then(async ([rs, rco, rloPdf, rloInterface]) => {
         const [ds, dco] = await Promise.all([rs.json(), rco.json()])
         if (ds.setup) setCampos(paraForm(ds.setup))
         setCotacao(dco.cotacao ?? null)
-        if (rlo.ok) {
-          const blob = await rlo.blob()
-          setLogoPreview(URL.createObjectURL(blob))
-        }
+        if (rloPdf.ok) setLogoPdfPreview(URL.createObjectURL(await rloPdf.blob()))
+        if (rloInterface.ok) setLogoInterfacePreview(URL.createObjectURL(await rloInterface.blob()))
       })
       .catch(() => setErro('Erro ao carregar configurações.'))
       .finally(() => setCarregando(false))
   }, [])
 
-  function onLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const base64 = reader.result as string
-      setLogoPreview(base64)
-      setSalvandoLogo(true)
-      try {
-        await fetch('/api/setup/logo', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ logo_base64: base64 }),
-        })
-      } finally {
-        setSalvandoLogo(false)
+  function onLogoChange(variante: 'pdf' | 'interface', setPreview: (url: string | null) => void) {
+    return (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0]
+      if (!file) return
+      const reader = new FileReader()
+      reader.onload = async () => {
+        const base64 = reader.result as string
+        setPreview(base64)
+        setSalvandoLogo(true)
+        try {
+          await fetch(`/api/setup/logo/${variante}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ logo_base64: base64 }),
+          })
+        } finally {
+          setSalvandoLogo(false)
+        }
       }
+      reader.readAsDataURL(file)
     }
-    reader.readAsDataURL(file)
   }
 
-  async function removerLogo() {
+  async function removerLogo(variante: 'pdf' | 'interface', setPreview: (url: string | null) => void) {
     setSalvandoLogo(true)
     try {
-      await fetch('/api/setup/logo', {
+      await fetch(`/api/setup/logo/${variante}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ logo_base64: null }),
       })
-      setLogoPreview(null)
+      setPreview(null)
     } finally {
       setSalvandoLogo(false)
     }
@@ -171,6 +182,9 @@ export function Setup() {
           smtp_port: Number(campos.smtp_port),
           smtp_secure: campos.smtp_secure,
           smtp_limite_hora: Number(campos.smtp_limite_hora),
+          envio_intervalo_segundos: Number(campos.envio_intervalo_segundos),
+          envio_lote_tamanho: Number(campos.envio_lote_tamanho),
+          envio_lote_pausa_segundos: Number(campos.envio_lote_pausa_segundos),
         }),
       })
       const d = await res.json()
@@ -214,26 +228,51 @@ export function Setup() {
       <form onSubmit={salvarSetup}>
         <h3 style={H3}>Dados da empresa</h3>
 
-        {/* Logo */}
+        {/* Logo do PDF (fundo branco) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          {logoPreview ? (
-            <img src={logoPreview} alt="Logo" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: '#fff' }} />
+          {logoPdfPreview ? (
+            <img src={logoPdfPreview} alt="Logo do PDF" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: '#fff' }} />
           ) : (
             <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
               Sem logo
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <strong style={{ fontSize: '13px' }}>Logo do PDF de propostas</strong>
             <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
               {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
-              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange} disabled={salvandoLogo} />
+              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange('pdf', setLogoPdfPreview)} disabled={salvandoLogo} />
             </label>
-            {logoPreview && (
-              <button type="button" className="botao-perigo" onClick={removerLogo} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
+            {logoPdfPreview && (
+              <button type="button" className="botao-perigo" onClick={() => removerLogo('pdf', setLogoPdfPreview)} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
                 Remover
               </button>
             )}
-            <span style={{ fontSize: '11px', color: 'var(--text)' }}>PNG, JPG ou SVG. Recomendado: até 400×100px.</span>
+            <span style={{ fontSize: '11px', color: 'var(--text)' }}>Fundo branco (impressão). PNG, JPG ou SVG. Até 400×100px.</span>
+          </div>
+        </div>
+
+        {/* Logo da interface (fundo escuro) */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
+          {logoInterfacePreview ? (
+            <img src={logoInterfacePreview} alt="Logo da interface" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: 'var(--bg-suave)' }} />
+          ) : (
+            <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
+              Sem logo
+            </div>
+          )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <strong style={{ fontSize: '13px' }}>Logo da interface (sidebar, login)</strong>
+            <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
+              {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
+              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange('interface', setLogoInterfacePreview)} disabled={salvandoLogo} />
+            </label>
+            {logoInterfacePreview && (
+              <button type="button" className="botao-perigo" onClick={() => removerLogo('interface', setLogoInterfacePreview)} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
+                Remover
+              </button>
+            )}
+            <span style={{ fontSize: '11px', color: 'var(--text)' }}>Fundo escuro (tema da aplicação) — use uma versão clara/branca da logo. PNG, JPG ou SVG.</span>
           </div>
         </div>
 
@@ -355,6 +394,42 @@ export function Setup() {
             <span style={{ fontSize: '12px', color: 'var(--text)' }}>
               Deve usar o mesmo domínio do usuário SMTP para evitar rejeição pelo servidor. Campanhas respeitam o limite de envios/hora configurado acima.
             </span>
+          </div>
+        </div>
+
+        <h3 style={H3}>Ritmo de envio de campanhas</h3>
+        <p style={{ fontSize: '12px', color: 'var(--text)', marginTop: '-6px', marginBottom: '10px' }}>
+          Provedores (ex.: Hostinger) bloqueiam temporariamente o envio quando detectam muitos
+          e-mails em sequência contínua ("ratelimit exceeded"). Duas proteções combinadas:
+          pausa entre cada e-mail, e uma pausa mais longa a cada lote de N e-mails.
+        </p>
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+          <div className="campo">
+            <label>Intervalo entre e-mails (segundos)</label>
+            <input
+              type="number" min="1" max="3600"
+              value={campos.envio_intervalo_segundos}
+              onChange={(e) => atualizar('envio_intervalo_segundos', e.target.value)}
+            />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>Recomendado: 30–60s para ser mais conservador.</span>
+          </div>
+          <div className="campo">
+            <label>Tamanho do lote</label>
+            <input
+              type="number" min="0" max="1000"
+              value={campos.envio_lote_tamanho}
+              onChange={(e) => atualizar('envio_lote_tamanho', e.target.value)}
+            />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>Quantos e-mails enviar antes da pausa longa. 0 desativa (só usa o intervalo simples).</span>
+          </div>
+          <div className="campo">
+            <label>Pausa entre lotes (segundos)</label>
+            <input
+              type="number" min="0" max="86400"
+              value={campos.envio_lote_pausa_segundos}
+              onChange={(e) => atualizar('envio_lote_pausa_segundos', e.target.value)}
+            />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>Recomendado: 300–600s (5–10 min).</span>
           </div>
         </div>
 

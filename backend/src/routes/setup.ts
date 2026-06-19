@@ -6,11 +6,25 @@ import { requireAdmin } from '../auth/middleware.js'
 export const setupRouter = Router()
 
 // ─── Logo da empresa ──────────────────────────────────────────────────────────
+// Duas variantes: logo_base64 (fundo branco, usada no PDF de propostas) e
+// logo_interface_base64 (pensada para fundo escuro, usada na sidebar/header/login
+// da interface) — a mesma imagem raramente funciona bem nos dois contextos.
 
-setupRouter.get('/logo', async (_req, res) => {
+const COLUNA_LOGO: Record<string, string> = {
+  pdf: 'logo_base64',
+  interface: 'logo_interface_base64',
+}
+
+function colunaLogo(variante: unknown): string | null {
+  return COLUNA_LOGO[String(variante)] ?? null
+}
+
+setupRouter.get('/logo/:variante', async (req, res) => {
+  const coluna = colunaLogo(req.params.variante)
+  if (!coluna) return res.status(404).end()
   try {
-    const [rows] = await pool.query('SELECT logo_base64 FROM setup WHERE id = 1')
-    const logo = (rows as any[])[0]?.logo_base64
+    const [rows] = await pool.query(`SELECT ${coluna} AS logo FROM setup WHERE id = 1`)
+    const logo = (rows as any[])[0]?.logo
     if (!logo) return res.status(404).end()
     const matches = logo.match(/^data:([^;]+);base64,(.+)$/)
     if (!matches) return res.status(400).end()
@@ -23,14 +37,16 @@ setupRouter.get('/logo', async (_req, res) => {
   }
 })
 
-setupRouter.put('/logo', requireAuth, requireAdmin, async (req, res) => {
+setupRouter.put('/logo/:variante', requireAuth, requireAdmin, async (req, res) => {
+  const coluna = colunaLogo(req.params.variante)
+  if (!coluna) return res.status(404).end()
   try {
     const { logo_base64 } = req.body
     if (!logo_base64) {
-      await pool.query('UPDATE setup SET logo_base64 = NULL WHERE id = 1')
+      await pool.query(`UPDATE setup SET ${coluna} = NULL WHERE id = 1`)
     } else {
       if (!logo_base64.startsWith('data:image/')) return res.status(400).json({ erro: 'Formato inválido.' })
-      await pool.query('UPDATE setup SET logo_base64 = ? WHERE id = 1', [logo_base64])
+      await pool.query(`UPDATE setup SET ${coluna} = ? WHERE id = 1`, [logo_base64])
     }
     res.json({ ok: true })
   } catch {
@@ -56,6 +72,7 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
       empresa_telefone, empresa_email, empresa_site,
       fator_markup_usd, proposta_validade_dias, observacoes_padrao,
       smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from, smtp_limite_hora,
+      envio_intervalo_segundos, envio_lote_tamanho, envio_lote_pausa_segundos,
     } = req.body
     await pool.query(
       `UPDATE setup SET
@@ -63,7 +80,8 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
          empresa_telefone = ?, empresa_email = ?, empresa_site = ?,
          fator_markup_usd = ?, proposta_validade_dias = ?, observacoes_padrao = ?,
          smtp_host = ?, smtp_port = ?, smtp_secure = ?, smtp_user = ?,
-         smtp_pass = ?, smtp_from = ?, smtp_limite_hora = ?
+         smtp_pass = ?, smtp_from = ?, smtp_limite_hora = ?,
+         envio_intervalo_segundos = ?, envio_lote_tamanho = ?, envio_lote_pausa_segundos = ?
        WHERE id = 1`,
       [
         empresa_nome ?? 'Videomart Broadcast',
@@ -82,6 +100,9 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
         smtp_pass?.trim() || null,
         smtp_from?.trim() || null,
         smtp_limite_hora ? Number(smtp_limite_hora) : 100,
+        envio_intervalo_segundos ? Number(envio_intervalo_segundos) : 10,
+        envio_lote_tamanho ? Number(envio_lote_tamanho) : 25,
+        envio_lote_pausa_segundos ? Number(envio_lote_pausa_segundos) : 300,
       ],
     )
     const [rows] = await pool.query('SELECT * FROM setup WHERE id = 1')

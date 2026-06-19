@@ -46,7 +46,7 @@ export function ImpressaoProposta() {
     Promise.all([
       fetch(`/api/propostas/${id}`, { credentials: 'include' }),
       fetch('/api/setup', { credentials: 'include' }),
-      fetch('/api/setup/logo', { credentials: 'include' }),
+      fetch('/api/setup/logo/pdf', { credentials: 'include' }),
     ])
       .then(async ([rp, rs, rlo]) => {
         if (!rp.ok) return Promise.reject(rp.status)
