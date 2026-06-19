@@ -360,7 +360,7 @@ export function FormularioProposta() {
         <div className="grade-formulario">
 
           {/* Linha 1: Cliente (span 2) + Vendedor */}
-          <div className="campo" style={{ gridColumn: 'span 2' }}>
+          <div className="campo campo-largo">
             <label htmlFor="cliente_busca">Cliente *</label>
             {!somenteLeitura && !clienteId && (
               <div style={{ position: 'relative' }}>

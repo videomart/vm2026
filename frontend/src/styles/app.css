@@ -497,6 +497,20 @@
   grid-column: 1 / -1;
 }
 
+/* Reforço de segurança: se algum filho de .grade-formulario tiver
+   grid-column: span N inline (N > nº de colunas declaradas), o grid cria
+   colunas implícitas extras mesmo com grid-template-columns: 1fr — foi
+   exatamente isso que quebrou Condições/Observações no mobile (campo
+   "Cliente" tinha style={{gridColumn: 'span 2'}} órfão, de quando o
+   seletor era um <select> simples). Já corrigido na origem (trocado por
+   .campo-largo, que usa 1/-1 e nunca exige mais colunas que o grid tem),
+   mas mantém esse !important como rede de segurança contra recorrência. */
+@media (max-width: 480px) {
+  .grade-formulario {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .grade-formulario.grade-4col {
   grid-template-columns: repeat(4, 1fr);
 }
