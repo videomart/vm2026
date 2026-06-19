@@ -14,6 +14,7 @@ export function ListaClientes() {
   const [busca, setBusca] = useState('')
   const [mostrarInativos, setMostrarInativos] = useState(false)
   const [categoriaId, setCategoriaId] = useState('')
+  const [apenasEmailInvalido, setApenasEmailInvalido] = useState(false)
   const [categorias, setCategorias] = useState<CategoriaCliente[]>([])
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
@@ -32,6 +33,7 @@ export function ListaClientes() {
     if (busca.trim()) parametros.set('q', busca.trim())
     if (mostrarInativos) parametros.set('incluirInativos', '1')
     if (categoriaId) parametros.set('categoria_cliente_id', categoriaId)
+    if (apenasEmailInvalido) parametros.set('emailInvalido', '1')
     fetch(`/api/clientes?${parametros.toString()}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
       .then((data) => { setClientes(data.clientes); grid.resetar() })
@@ -46,7 +48,7 @@ export function ListaClientes() {
       .catch(() => null)
   }, [])
 
-  useEffect(() => { carregar() }, [mostrarInativos, categoriaId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [mostrarInativos, categoriaId, apenasEmailInvalido]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function inativar(cliente: Cliente) {
     if (!confirm(`Inativar o cliente "${cliente.razao_social}"?`)) return
@@ -86,6 +88,10 @@ export function ListaClientes() {
           <input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />
           Mostrar inativos
         </label>
+        <label className="opcao-checkbox">
+          <input type="checkbox" checked={apenasEmailInvalido} onChange={(e) => setApenasEmailInvalido(e.target.checked)} />
+          Só com e-mail pendente de recadastro
+        </label>
       </form>
 
       {erro && <p className="alerta-erro" role="alert">{erro}</p>}
@@ -121,6 +127,11 @@ export function ListaClientes() {
                       {cliente.ativo
                         ? <span className="badge badge-ativo">Ativo</span>
                         : <span className="badge badge-inativo">Inativo</span>}
+                      {!!cliente.email_invalido && (
+                        <span className="badge badge-inativo" style={{ marginLeft: '4px' }} title="E-mail rejeitado em campanha anterior — precisa ser recadastrado">
+                          E-mail pendente
+                        </span>
+                      )}
                     </td>
                     <td>
                       <div className="acoes">

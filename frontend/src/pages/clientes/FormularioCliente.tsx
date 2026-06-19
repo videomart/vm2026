@@ -16,10 +16,10 @@ import { formatarData } from '../../utils/formatar'
 import type { Cliente } from './types'
 
 type Condicao = { id: number; descricao: string }
-type Contato = { id: number; nome: string; telefone: string | null; email: string | null }
+type Contato = { id: number; nome: string; telefone: string | null; email: string | null; email_invalido?: 0 | 1 }
 type CategoriaCliente = { id: number; nome: string }
 
-type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em' | 'categoria_cliente_id' | 'categoria_cliente_nome'> & {
+type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em' | 'categoria_cliente_id' | 'categoria_cliente_nome' | 'email_invalido'> & {
   categoria_cliente_id: string
 }
 
@@ -460,7 +460,14 @@ export function FormularioCliente() {
                         <>
                           <td>{c.nome}</td>
                           <td>{c.telefone ?? '—'}</td>
-                          <td>{c.email ?? '—'}</td>
+                          <td>
+                            {c.email ?? '—'}
+                            {!!c.email_invalido && (
+                              <span className="badge badge-inativo" style={{ marginLeft: '6px', fontSize: '11px' }} title="E-mail rejeitado em campanha anterior — precisa ser recadastrado">
+                                pendente
+                              </span>
+                            )}
+                          </td>
                           <td>
                             <div className="acoes">
                               <button className="botao-link" type="button" onClick={() => { setEditandoContato(c.id); setEditContato({ nome: c.nome, telefone: c.telefone ?? '', email: c.email ?? '' }) }}>Editar</button>

@@ -278,6 +278,103 @@ campanhasRouter.delete('/:id', requireAdmin, async (req, res) => {
   }
 })
 
+// Detecta se a mensagem de erro do SMTP indica que o endereço é definitivamente
+// inválido (não existe, domínio inexistente, rejeitado permanentemente) — diferente
+// de erros temporários (ratelimit, caixa cheia, timeout de conexão, greylisting),
+// que não significam que o e-mail esteja errado e não devem disparar sanitização.
+// Códigos SMTP 5xx = erro permanente; 4xx = temporário (RFC 5321). Mensagens sem
+// código numérico (timeout, ECONNREFUSED etc.) também são tratadas como temporárias.
+function isErroDefinitivo(mensagem: string | null): boolean {
+  if (!mensagem) return false
+  // Erros de configuração do REMETENTE (não do destinatário) nunca devem disparar
+  // sanitização — ex.: "Sender address rejected: not owned by user X" é problema de
+  // configuração da conta SMTP usada para enviar, não do e-mail do destinatário.
+  if (/sender address rejected|not owned by user/i.test(mensagem)) return false
+  if (/\b5\d{2}\s+5\.\d\.\d\b/.test(mensagem)) return true // ex.: "550 5.1.1"
+  if (/\b5\d{2}\b/.test(mensagem) && /user unknown|does not exist|no such user|invalid recipient|recipient address rejected|mailbox unavailable|unrouteable/i.test(mensagem)) return true
+  return false
+}
+
+campanhasRouter.get('/:id/erros-definitivos', requireAdmin, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, email, nome, mensagem_erro FROM campanha_envios WHERE campanha_id = ? AND status = 'erro'`,
+      [req.params.id],
+    ) as any[]
+    const definitivos = (rows as any[]).filter((r) => isErroDefinitivo(r.mensagem_erro))
+    res.json({ erros: definitivos })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao buscar erros da campanha.' })
+  }
+})
+
+// "Sanitizar": para os e-mails com erro definitivo desta campanha —
+//   1. remove o e-mail (avulso) do grupo, se ele veio de grupo_emails_extra
+//   2. esvazia clientes.email / contatos.email em todo registro que usa esse
+//      endereço e marca email_invalido=1, para parar de tentar enviar e permitir
+//      listar quem precisa ter o e-mail recadastrado
+campanhasRouter.post('/:id/sanitizar', requireAdmin, async (req, res) => {
+  const conn = await pool.getConnection()
+  try {
+    const [rows] = await conn.query(
+      `SELECT id, email, mensagem_erro FROM campanha_envios WHERE campanha_id = ? AND status = 'erro'`,
+      [req.params.id],
+    ) as any[]
+    const definitivos = (rows as any[]).filter((r) => isErroDefinitivo(r.mensagem_erro))
+    if (!definitivos.length) {
+      return res.status(400).json({ erro: 'Nenhum e-mail com erro definitivo para sanitizar.' })
+    }
+
+    const [campanhaRows] = await conn.query(
+      'SELECT grupo_id FROM campanhas_email WHERE id = ?',
+      [req.params.id],
+    ) as any[]
+    const grupoId = campanhaRows[0]?.grupo_id
+
+    await conn.beginTransaction()
+
+    let clientesAtualizados = 0
+    let contatosAtualizados = 0
+    let removidosDoGrupo = 0
+
+    for (const { email } of definitivos) {
+      const [rCli] = await conn.query(
+        `UPDATE clientes SET email = NULL, email_invalido = 1 WHERE email = ?`,
+        [email],
+      ) as any[]
+      clientesAtualizados += (rCli as any).affectedRows
+
+      const [rCont] = await conn.query(
+        `UPDATE contatos SET email = NULL, email_invalido = 1 WHERE email = ?`,
+        [email],
+      ) as any[]
+      contatosAtualizados += (rCont as any).affectedRows
+
+      if (grupoId) {
+        const [rGrupo] = await conn.query(
+          `DELETE FROM grupo_emails_extra WHERE grupo_id = ? AND email = ?`,
+          [grupoId, email],
+        ) as any[]
+        removidosDoGrupo += (rGrupo as any).affectedRows
+      }
+    }
+
+    await conn.commit()
+    res.json({
+      ok: true,
+      total_sanitizados: definitivos.length,
+      clientes_atualizados: clientesAtualizados,
+      contatos_atualizados: contatosAtualizados,
+      removidos_do_grupo: removidosDoGrupo,
+    })
+  } catch {
+    await conn.rollback()
+    res.status(500).json({ erro: 'Erro ao sanitizar e-mails.' })
+  } finally {
+    conn.release()
+  }
+})
+
 // Retoma uma campanha travada (ex.: backend reiniciou no meio do processamento).
 // Reprocessa quem está 'pendente'; se reincluir_erros=true, também tenta de novo
 // quem falhou antes (útil quando o erro era ratelimit/conta sem saldo, já corrigido).

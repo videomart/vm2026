@@ -46,6 +46,8 @@ export function DetalheCampanha() {
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
   const [retomando, setRetomando] = useState(false)
+  const [errosDefinitivos, setErrosDefinitivos] = useState<Envio[]>([])
+  const [sanitizando, setSanitizando] = useState(false)
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
   function carregar() {
@@ -54,6 +56,14 @@ export function DetalheCampanha() {
       .then((d) => { setCampanha(d.campanha); setEnvios(d.envios ?? []) })
       .catch(() => setErro('Não foi possível carregar a campanha.'))
       .finally(() => setCarregando(false))
+    carregarErrosDefinitivos()
+  }
+
+  function carregarErrosDefinitivos() {
+    fetch(`/api/campanhas/${id}/erros-definitivos`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(r)))
+      .then((d) => setErrosDefinitivos(d.erros ?? []))
+      .catch(() => {})
   }
 
   useEffect(() => { carregar() }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -85,6 +95,30 @@ export function DetalheCampanha() {
     const lista = comErro.map((e) => e.email).join(', ')
     navigator.clipboard.writeText(lista)
     alert(`${comErro.length} e-mail(s) com erro copiado(s) para a área de transferência.`)
+  }
+
+  async function sanitizar() {
+    if (!confirm(
+      `${errosDefinitivos.length} e-mail(s) com erro definitivo (endereço inexistente/rejeitado) serão removidos ` +
+      `do grupo e marcados como inválidos no cadastro do cliente/contato (e-mail apagado, pendente de recadastro). ` +
+      `Confirma?`,
+    )) return
+    setSanitizando(true)
+    setErro(null)
+    try {
+      const res = await fetch(`/api/campanhas/${id}/sanitizar`, { method: 'POST', credentials: 'include' })
+      const d = await res.json()
+      if (!res.ok) { setErro(d.erro ?? 'Erro ao sanitizar e-mails.'); return }
+      alert(
+        `${d.total_sanitizados} e-mail(s) sanitizado(s): ${d.clientes_atualizados} cliente(s), ` +
+        `${d.contatos_atualizados} contato(s) atualizados, ${d.removidos_do_grupo} removido(s) do grupo.`,
+      )
+      carregarErrosDefinitivos()
+    } catch {
+      setErro('Erro de conexão ao sanitizar e-mails.')
+    } finally {
+      setSanitizando(false)
+    }
   }
 
   async function retomar(reincluirErros: boolean) {
@@ -139,12 +173,19 @@ export function DetalheCampanha() {
       </div>
 
       {comErro.length > 0 && (
-        <p style={{ fontSize: '13px', marginBottom: '12px' }}>
+        <p style={{ fontSize: '13px', marginBottom: '12px', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <button className="botao-secundario" type="button" onClick={copiarEmailsComErro}>
             Copiar e-mails com erro ({comErro.length})
           </button>
-          <span style={{ marginLeft: '10px', color: 'var(--text)' }}>
-            Use para localizar e corrigir/excluir esses contatos.
+          {errosDefinitivos.length > 0 && (
+            <button className="botao-perigo" type="button" disabled={sanitizando} onClick={sanitizar}>
+              {sanitizando ? 'Sanitizando...' : `Sanitizar (${errosDefinitivos.length} inválido${errosDefinitivos.length > 1 ? 's' : ''})`}
+            </button>
+          )}
+          <span style={{ color: 'var(--text)' }}>
+            {errosDefinitivos.length > 0
+              ? 'Sanitizar remove do grupo e marca o e-mail como inválido no cadastro (pendente de recadastro). Os demais erros podem ser temporários (limite/timeout) — tente reenviar antes.'
+              : 'Use para localizar e corrigir/excluir esses contatos.'}
           </span>
         </p>
       )}

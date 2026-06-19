@@ -4,6 +4,7 @@ export type Cliente = {
   nome_fantasia: string | null
   cnpj_cpf: string | null
   email: string | null
+  email_invalido?: 0 | 1
   telefone: string | null
   whatsapp: string | null
   endereco: string | null

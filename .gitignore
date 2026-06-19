@@ -8,8 +8,9 @@ db/legado/*
 # Backups locais criados durante depuração
 *.bak
 
-# Dumps de banco gerados durante deploy (contêm dados reais de clientes)
-*.sql
+# Dumps de banco gerados durante deploy (contêm dados reais de clientes) — só na
+# raiz do projeto; db/init e db/migrations têm os scripts de schema versionados
+/*.sql
 
 # Dependências e builds (frontend / backend)
 node_modules/

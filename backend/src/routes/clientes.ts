@@ -41,6 +41,7 @@ clientesRouter.get('/', async (req, res) => {
   const busca = typeof req.query.q === 'string' ? req.query.q.trim() : ''
   const incluirInativos = req.query.incluirInativos === '1'
   const categoriaId = typeof req.query.categoria_cliente_id === 'string' ? req.query.categoria_cliente_id : ''
+  const apenasEmailInvalido = req.query.emailInvalido === '1'
 
   const condicoes: string[] = []
   const parametros: any[] = []
@@ -57,10 +58,14 @@ clientesRouter.get('/', async (req, res) => {
     condicoes.push('c.categoria_cliente_id = ?')
     parametros.push(categoriaId)
   }
+  if (apenasEmailInvalido) {
+    condicoes.push('c.email_invalido = 1')
+  }
 
   const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
   const [rows] = await pool.query(
-    `SELECT c.id, c.razao_social, c.nome_fantasia, c.cnpj_cpf, c.email, c.telefone, c.whatsapp,
+    `SELECT c.id, c.razao_social, c.nome_fantasia, c.cnpj_cpf, c.email, c.email_invalido,
+            c.telefone, c.whatsapp,
             c.endereco, c.cidade, c.uf, c.cep, c.observacoes, c.condicoes_pagamento,
             c.categoria_cliente_id, cc.nome AS categoria_cliente_nome,
             c.ativo, c.criado_em, c.atualizado_em
@@ -108,6 +113,11 @@ clientesRouter.put('/:id', async (req, res) => {
   if (Object.keys(dados).length === 0) {
     return res.status(400).json({ erro: 'Nenhum dado para atualizar.' })
   }
+  // Recadastrar o e-mail (mesmo que para outro endereço) limpa a marca de inválido —
+  // o usuário acabou de corrigir, deixa o sistema tentar enviar de novo.
+  if ('email' in dados && dados.email) {
+    dados.email_invalido = 0
+  }
 
   const [resultado] = await pool.query('UPDATE clientes SET ? WHERE id = ?', [
     dados,
@@ -148,7 +158,7 @@ clientesRouter.post('/:id/reativar', async (req, res) => {
 
 clientesRouter.get('/:id/contatos', async (req, res) => {
   const [rows] = await pool.query(
-    'SELECT id, nome, telefone, email FROM contatos WHERE cliente_id = ? AND ativo = 1 ORDER BY nome ASC',
+    'SELECT id, nome, telefone, email, email_invalido FROM contatos WHERE cliente_id = ? AND ativo = 1 ORDER BY nome ASC',
     [req.params.id],
   )
   res.json({ contatos: rows })
@@ -167,9 +177,11 @@ clientesRouter.post('/:id/contatos', async (req, res) => {
 clientesRouter.put('/:id/contatos/:cid', async (req, res) => {
   const { nome, telefone, email } = req.body
   if (!nome?.trim()) return res.status(400).json({ erro: 'Nome é obrigatório.' })
+  const emailLimpo = email?.trim() || null
+  // Recadastrar o e-mail limpa a marca de inválido — o usuário acabou de corrigir.
   await pool.query(
-    'UPDATE contatos SET nome = ?, telefone = ?, email = ? WHERE id = ? AND cliente_id = ?',
-    [nome.trim(), telefone?.trim() || null, email?.trim() || null, req.params.cid, req.params.id],
+    'UPDATE contatos SET nome = ?, telefone = ?, email = ?, email_invalido = IF(? IS NOT NULL, 0, email_invalido) WHERE id = ? AND cliente_id = ?',
+    [nome.trim(), telefone?.trim() || null, emailLimpo, emailLimpo, req.params.cid, req.params.id],
   )
   res.json({ ok: true })
 })
