@@ -125,14 +125,13 @@ export function ListaLeads() {
         {!carregando && leads.length === 0 && <p className="estado-vazio">Nenhum lead encontrado.</p>}
         {!carregando && leads.length > 0 && (
           <>
-            <table className="tabela" style={{ minWidth: '1180px' }}>
+            <table className="tabela">
               <thead>
                 <tr>
                   <th {...grid.th('id')}>ID</th>
                   <th {...grid.th('nome_empresa')}>Empresa / Contato</th>
                   <th>Telefone / E-mail</th>
                   <th {...grid.th('cidade')}>Cidade/UF</th>
-                  <th {...grid.th('origem')}>Origem</th>
                   <th {...grid.th('vendedor_nome')}>Vendedor</th>
                   <th {...grid.th('status')}>Status</th>
                   <th {...grid.th('criado_em')}>Recebido em</th>
@@ -152,7 +151,6 @@ export function ListaLeads() {
                       {l.email && <div style={{ fontSize: '0.85em', color: 'var(--text)' }}>{l.email}</div>}
                     </td>
                     <td>{l.cidade ?? '—'}{l.uf ? `/${l.uf}` : ''}</td>
-                    <td>{l.origem ?? '—'}</td>
                     <td>{l.vendedor_nome ?? '—'}</td>
                     <td>
                       <span className={CLASSES_STATUS[l.status]}>{LABELS_STATUS[l.status]}</span>
@@ -166,15 +164,17 @@ export function ListaLeads() {
                     <td>
                       <div className="acoes">
                         <Link className="botao-link" to={`/leads/${l.id}`}>Ver</Link>
-                        <button
-                          className="botao-secundario"
-                          type="button"
-                          disabled={!!l.vendedor_id}
-                          onClick={() => assumir(l)}
-                        >
-                          Assumir
-                        </button>
-                        <button className="botao-perigo" type="button" onClick={() => remover(l)}>Remover</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <button
+                            className="botao-secundario"
+                            type="button"
+                            disabled={!!l.vendedor_id}
+                            onClick={() => assumir(l)}
+                          >
+                            Assumir
+                          </button>
+                          <button className="botao-perigo" type="button" onClick={() => remover(l)}>Remover</button>
+                        </div>
                       </div>
                     </td>
                   </tr>
