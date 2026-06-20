@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
+import { useOverflowHorizontal } from '../../hooks/useOverflowHorizontal'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarTelefone } from '../../utils/formatar'
 import type { Lead, StatusLead } from './types'
@@ -43,6 +44,7 @@ export function ListaLeads() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(leads, 'id', 30, 'desc')
+  const { ref: wrapperRef, temOverflow } = useOverflowHorizontal<HTMLDivElement>()
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -112,12 +114,18 @@ export function ListaLeads() {
 
       {erro && <p className="alerta-erro" role="alert">{erro}</p>}
 
-      <div className="tabela-wrapper">
+      {temOverflow && (
+        <p style={{ fontSize: '12px', color: 'var(--text)', marginBottom: '6px' }}>
+          ⇆ Role a tabela para o lado para ver todas as colunas e ações.
+        </p>
+      )}
+
+      <div className="tabela-wrapper" ref={wrapperRef}>
         {carregando && <p className="estado-vazio">Carregando...</p>}
         {!carregando && leads.length === 0 && <p className="estado-vazio">Nenhum lead encontrado.</p>}
         {!carregando && leads.length > 0 && (
           <>
-            <table className="tabela">
+            <table className="tabela" style={{ minWidth: '1180px' }}>
               <thead>
                 <tr>
                   <th {...grid.th('id')}>ID</th>
