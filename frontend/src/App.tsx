@@ -40,6 +40,7 @@ type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
 
 const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp', '/fornecedores', '/categorias-despesa']
+const ROTAS_FINANCEIRO = ['/contas-receber', '/contas-pagar']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -47,7 +48,9 @@ function App() {
   const [menuAberto, setMenuAberto] = useState(false)
   const location = useLocation()
   const emConfig = ROTAS_CONFIG.some((r) => location.pathname.startsWith(r))
+  const emFinanceiro = ROTAS_FINANCEIRO.some((r) => location.pathname.startsWith(r))
   const [configAberto, setConfigAberto] = useState(emConfig)
+  const [financeiroAberto, setFinanceiroAberto] = useState(emFinanceiro)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -129,8 +132,20 @@ function App() {
           <NavLink to="/clientes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Clientes</NavLink>
           <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
           <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
-          <NavLink to="/contas-receber" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a receber</NavLink>
-          <NavLink to="/contas-pagar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a pagar</NavLink>
+          <button
+            className={`menu-grupo-btn${emFinanceiro ? ' ativo' : ''}`}
+            type="button"
+            onClick={() => setFinanceiroAberto((v) => !v)}
+          >
+            <span>Financeiro</span>
+            <span className="menu-grupo-seta">{financeiroAberto ? '▾' : '▸'}</span>
+          </button>
+          {financeiroAberto && (
+            <div className="menu-subgrupo">
+              <NavLink to="/contas-receber" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a receber</NavLink>
+              <NavLink to="/contas-pagar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a pagar</NavLink>
+            </div>
+          )}
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
           <NavLink to="/campanhas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>E-mails</NavLink>
           {usuario.papel === 'admin' && (
