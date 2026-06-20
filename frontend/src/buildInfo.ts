@@ -1,3 +1,3 @@
 // Atualizado automaticamente a cada commit pelo agente de desenvolvimento
-export const BUILD_DATE = '20/06/2026 00:54'
-export const BUILD_VERSION = '1.0.4'
+export const BUILD_DATE = '20/06/2026 01:04'
+export const BUILD_VERSION = '1.0.5'
