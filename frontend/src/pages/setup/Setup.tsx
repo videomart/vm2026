@@ -20,6 +20,7 @@ type SetupData = {
   envio_intervalo_segundos: string
   envio_lote_tamanho: string
   envio_lote_pausa_segundos: string
+  lembrete_proposta_dias: string
 }
 
 type Cotacao = { id: number; data: string; valor: string; fonte: string | null } | null
@@ -56,6 +57,7 @@ const SETUP_VAZIO: SetupData = {
   envio_intervalo_segundos: '10',
   envio_lote_tamanho: '25',
   envio_lote_pausa_segundos: '300',
+  lembrete_proposta_dias: '3',
 }
 
 function paraForm(s: any): SetupData {
@@ -79,6 +81,7 @@ function paraForm(s: any): SetupData {
     envio_intervalo_segundos: String(s.envio_intervalo_segundos ?? '10'),
     envio_lote_tamanho: String(s.envio_lote_tamanho ?? '25'),
     envio_lote_pausa_segundos: String(s.envio_lote_pausa_segundos ?? '300'),
+    lembrete_proposta_dias: String(s.lembrete_proposta_dias ?? '3'),
   }
 }
 
@@ -185,6 +188,7 @@ export function Setup() {
           envio_intervalo_segundos: Number(campos.envio_intervalo_segundos),
           envio_lote_tamanho: Number(campos.envio_lote_tamanho),
           envio_lote_pausa_segundos: Number(campos.envio_lote_pausa_segundos),
+          lembrete_proposta_dias: Number(campos.lembrete_proposta_dias),
         }),
       })
       const d = await res.json()
@@ -306,7 +310,7 @@ export function Setup() {
         </div>
 
         <h3 style={H3}>Propostas e precificação</h3>
-        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
+        <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
           <div className="campo">
             <label>Validade padrão (dias)</label>
             <input type="number" min="0" step="1" value={campos.proposta_validade_dias} onChange={(e) => atualizar('proposta_validade_dias', e.target.value)} />
@@ -316,6 +320,13 @@ export function Setup() {
             <input type="number" min="1" step="0.01" value={campos.fator_markup_usd} onChange={(e) => atualizar('fator_markup_usd', e.target.value)} />
             <span style={{ fontSize: '12px', color: 'var(--text)' }}>
               Preço sugerido = preço USD × cotação do dia × fator. Ex.: 1,30 = 30% de margem.
+            </span>
+          </div>
+          <div className="campo">
+            <label>Lembrete de proposta parada (dias)</label>
+            <input type="number" min="0" step="1" value={campos.lembrete_proposta_dias} onChange={(e) => atualizar('lembrete_proposta_dias', e.target.value)} />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              E-mail ao vendedor quando a proposta "aberta" fica esse tempo sem atividade. Repete a cada N dias. 0 desativa.
             </span>
           </div>
         </div>

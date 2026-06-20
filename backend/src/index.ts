@@ -19,7 +19,7 @@ import { templatesEmailRouter } from './routes/templatesEmail.js'
 import { campanhasRouter } from './routes/campanhas.js'
 import { contasReceberRouter } from './routes/contasReceber.js'
 import { contasSmtpRouter } from './routes/contasSmtp.js'
-import { retomarCampanhasTravadas } from './email.js'
+import { retomarCampanhasTravadas, verificarPropostasParadas } from './email.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -73,4 +73,9 @@ if (fs.existsSync(pastaFrontend)) {
 app.listen(port, () => {
   console.log(`vm2026 backend ouvindo na porta ${port}`)
   retomarCampanhasTravadas()
+
+  // Verifica propostas paradas uma vez ao iniciar, depois a cada 24h — não precisa
+  // de cron externo, roda dentro do próprio processo (igual a retomarCampanhasTravadas).
+  verificarPropostasParadas()
+  setInterval(verificarPropostasParadas, 24 * 60 * 60 * 1000)
 })
