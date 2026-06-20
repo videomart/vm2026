@@ -18,6 +18,9 @@ import { categoriasClienteRouter } from './routes/categoriasCliente.js'
 import { templatesEmailRouter } from './routes/templatesEmail.js'
 import { campanhasRouter } from './routes/campanhas.js'
 import { contasReceberRouter } from './routes/contasReceber.js'
+import { contasPagarRouter } from './routes/contasPagar.js'
+import { fornecedoresRouter } from './routes/fornecedores.js'
+import { categoriasDespesaRouter } from './routes/categoriasDespesa.js'
 import { contasSmtpRouter } from './routes/contasSmtp.js'
 import { retomarCampanhasTravadas, verificarPropostasParadas } from './email.js'
 
@@ -46,6 +49,9 @@ app.use('/api/categorias-cliente', categoriasClienteRouter)
 app.use('/api/templates-email', templatesEmailRouter)
 app.use('/api/campanhas', campanhasRouter)
 app.use('/api/contas-receber', contasReceberRouter)
+app.use('/api/contas-pagar', contasPagarRouter)
+app.use('/api/fornecedores', fornecedoresRouter)
+app.use('/api/categorias-despesa', categoriasDespesaRouter)
 app.use('/api/contas-smtp', contasSmtpRouter)
 
 app.get('/api/health', async (_req, res) => {

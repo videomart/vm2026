@@ -29,13 +29,17 @@ import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
 import { ListaContasReceber } from './pages/contasReceber/ListaContasReceber'
 import { ListaAssinaturas } from './pages/contasReceber/ListaAssinaturas'
+import { ListaContasPagar } from './pages/contasPagar/ListaContasPagar'
+import { DespesasRecorrentes } from './pages/contasPagar/DespesasRecorrentes'
+import { Fornecedores } from './pages/contasPagar/Fornecedores'
+import { CategoriasDespesa } from './pages/contasPagar/CategoriasDespesa'
 import { LogoEmpresa } from './components/LogoEmpresa'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 
 const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
 
-const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp']
+const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp', '/fornecedores', '/categorias-despesa']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -126,6 +130,7 @@ function App() {
           <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
           <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
           <NavLink to="/contas-receber" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a receber</NavLink>
+          <NavLink to="/contas-pagar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a pagar</NavLink>
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
           <NavLink to="/campanhas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>E-mails</NavLink>
           {usuario.papel === 'admin' && (
@@ -147,6 +152,8 @@ function App() {
                   <NavLink to="/categorias" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias</NavLink>
                   <NavLink to="/categorias-cliente" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de cliente</NavLink>
                   <NavLink to="/contas-smtp" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas SMTP</NavLink>
+                  <NavLink to="/fornecedores" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Fornecedores</NavLink>
+                  <NavLink to="/categorias-despesa" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de despesa</NavLink>
                 </div>
               )}
             </>
@@ -177,6 +184,8 @@ function App() {
           <Route path="/propostas/:id" element={<FormularioProposta />} />
           <Route path="/contas-receber" element={<ListaContasReceber />} />
           <Route path="/contas-receber/assinaturas" element={<ListaAssinaturas />} />
+          <Route path="/contas-pagar" element={<ListaContasPagar />} />
+          <Route path="/contas-pagar/recorrentes" element={<DespesasRecorrentes />} />
           <Route path="/leads" element={<ListaLeads />} />
           <Route path="/leads/novo" element={<FormularioLead />} />
           <Route path="/leads/:id" element={<FormularioLead />} />
@@ -205,6 +214,12 @@ function App() {
           )}
           {usuario.papel === 'admin' && (
             <Route path="/categorias-cliente" element={<CategoriasCliente />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/fornecedores" element={<Fornecedores />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/categorias-despesa" element={<CategoriasDespesa />} />
           )}
         </Routes>
       </main>
