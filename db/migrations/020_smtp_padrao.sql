@@ -32,10 +32,14 @@ BEGIN
   END IF;
 
   -- Se nenhuma conta está marcada como padrão ainda (instalação nova ou sem
-  -- SMTP em setup), marca a primeira conta ativa existente.
+  -- SMTP em setup), marca a primeira conta ativa existente. Subquery derivada
+  -- (SELECT * FROM (...) AS x) contorna a restrição do MySQL de não poder
+  -- referenciar a tabela-alvo do UPDATE direto numa subquery do WHERE.
   IF NOT EXISTS (SELECT 1 FROM contas_smtp WHERE padrao = 1) THEN
     UPDATE contas_smtp SET padrao = 1 WHERE id = (
-      SELECT id FROM contas_smtp WHERE ativo = 1 ORDER BY id ASC LIMIT 1
+      SELECT id FROM (
+        SELECT id FROM contas_smtp WHERE ativo = 1 ORDER BY id ASC LIMIT 1
+      ) AS primeira_ativa
     );
   END IF;
 END$$
