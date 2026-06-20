@@ -232,51 +232,53 @@ export function Setup() {
       <form onSubmit={salvarSetup}>
         <h3 style={H3}>Dados da empresa</h3>
 
-        {/* Logo do PDF (fundo branco) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          {logoPdfPreview ? (
-            <img src={logoPdfPreview} alt="Logo do PDF" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: '#fff' }} />
-          ) : (
-            <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
-              Sem logo
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <strong style={{ fontSize: '13px' }}>Logo do PDF de propostas</strong>
-            <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
-              {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
-              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange('pdf', setLogoPdfPreview)} disabled={salvandoLogo} />
-            </label>
-            {logoPdfPreview && (
-              <button type="button" className="botao-perigo" onClick={() => removerLogo('pdf', setLogoPdfPreview)} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
-                Remover
-              </button>
+        <div className="grade-2col-responsiva" style={{ marginBottom: '16px' }}>
+          {/* Logo do PDF (fundo branco) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {logoPdfPreview ? (
+              <img src={logoPdfPreview} alt="Logo do PDF" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: '#fff' }} />
+            ) : (
+              <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
+                Sem logo
+              </div>
             )}
-            <span style={{ fontSize: '11px', color: 'var(--text)' }}>Fundo branco (impressão). PNG, JPG ou SVG. Até 400×100px.</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <strong style={{ fontSize: '13px' }}>Logo do PDF de propostas</strong>
+              <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
+                <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange('pdf', setLogoPdfPreview)} disabled={salvandoLogo} />
+              </label>
+              {logoPdfPreview && (
+                <button type="button" className="botao-perigo" onClick={() => removerLogo('pdf', setLogoPdfPreview)} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
+                  Remover
+                </button>
+              )}
+              <span style={{ fontSize: '11px', color: 'var(--text)' }}>Fundo branco (impressão). PNG, JPG ou SVG. Até 400×100px.</span>
+            </div>
           </div>
-        </div>
 
-        {/* Logo da interface (fundo escuro) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-          {logoInterfacePreview ? (
-            <img src={logoInterfacePreview} alt="Logo da interface" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: 'var(--bg-suave)' }} />
-          ) : (
-            <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
-              Sem logo
-            </div>
-          )}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <strong style={{ fontSize: '13px' }}>Logo da interface (sidebar, login)</strong>
-            <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
-              {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
-              <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange('interface', setLogoInterfacePreview)} disabled={salvandoLogo} />
-            </label>
-            {logoInterfacePreview && (
-              <button type="button" className="botao-perigo" onClick={() => removerLogo('interface', setLogoInterfacePreview)} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
-                Remover
-              </button>
+          {/* Logo da interface (fundo escuro) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            {logoInterfacePreview ? (
+              <img src={logoInterfacePreview} alt="Logo da interface" style={{ maxHeight: '64px', maxWidth: '200px', objectFit: 'contain', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px', background: 'var(--bg-suave)' }} />
+            ) : (
+              <div style={{ width: '200px', height: '64px', border: '1px dashed var(--border)', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', color: 'var(--text)' }}>
+                Sem logo
+              </div>
             )}
-            <span style={{ fontSize: '11px', color: 'var(--text)' }}>Fundo escuro (tema da aplicação) — use uma versão clara/branca da logo. PNG, JPG ou SVG.</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <strong style={{ fontSize: '13px' }}>Logo da interface (sidebar, login)</strong>
+              <label className="botao-secundario" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                {salvandoLogo ? 'Salvando...' : 'Alterar logo'}
+                <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }} onChange={onLogoChange('interface', setLogoInterfacePreview)} disabled={salvandoLogo} />
+              </label>
+              {logoInterfacePreview && (
+                <button type="button" className="botao-perigo" onClick={() => removerLogo('interface', setLogoInterfacePreview)} disabled={salvandoLogo} style={{ fontSize: '12px', padding: '4px 10px' }}>
+                  Remover
+                </button>
+              )}
+              <span style={{ fontSize: '11px', color: 'var(--text)' }}>Fundo escuro (tema da aplicação) — use uma versão clara/branca da logo. PNG, JPG ou SVG.</span>
+            </div>
           </div>
         </div>
 

@@ -632,8 +632,8 @@
 
 .tabela th {
   font-weight: 600;
-  color: var(--text);
-  background: var(--bg-elevado);
+  color: #fff;
+  background: #000;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
