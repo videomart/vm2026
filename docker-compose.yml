@@ -13,8 +13,6 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile.prod
-      args:
-        APP_VERSION: ${APP_VERSION:-dev}
     environment:
       PORT: 3001
       DB_HOST: db

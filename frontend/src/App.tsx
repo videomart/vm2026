@@ -159,7 +159,7 @@ function App() {
           <button className="botao-secundario" type="button" onClick={handleLogout}>
             Sair
           </button>
-          <span className="versao-app" title="Versão/release do build atual">{__APP_VERSION__}</span>
+          <span className="versao-app" title="Versão/release do build atual">v{__APP_BUILD__} · {__BUILD_TIME__}</span>
         </div>
       </aside>
 

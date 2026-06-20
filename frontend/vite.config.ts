@@ -1,27 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 
-// Em produção (Dockerfile.prod) o build roda sem acesso ao .git (o COPY só traz a
-// pasta frontend/), então o hash vem via --build-arg APP_VERSION (definido no
-// docker-compose.prod.yml a partir do host, que tem o repo completo). Em dev local,
-// cai para "git rev-parse" direto.
-function appVersion() {
-  if (process.env.APP_VERSION) return process.env.APP_VERSION
-  try {
-    const hash = execSync('git rev-parse --short HEAD').toString().trim()
-    const data = execSync('git log -1 --format=%cd --date=format:%Y-%m-%d').toString().trim()
-    return `${hash} (${data})`
-  } catch {
-    return 'dev'
-  }
-}
+// Versão e data vêm do arquivo buildInfo.ts (commitado no git) — atualizado pelo
+// agente de desenvolvimento a cada commit relevante, não depende do .git estar
+// disponível no contexto de build do Docker (que só copia a pasta frontend/).
+const buildInfoSrc = readFileSync('./src/buildInfo.ts', 'utf-8')
+const versionMatch = buildInfoSrc.match(/BUILD_VERSION\s*=\s*'([^']+)'/)
+const dateMatch = buildInfoSrc.match(/BUILD_DATE\s*=\s*'([^']+)'/)
+const APP_VERSION = versionMatch?.[1] ?? '0.0.0'
+const BUILD_TIME = dateMatch?.[1] ?? '—'
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   define: {
-    __APP_VERSION__: JSON.stringify(appVersion()),
+    __APP_BUILD__: JSON.stringify(APP_VERSION),
+    __BUILD_TIME__: JSON.stringify(BUILD_TIME),
   },
   server: {
     host: true,

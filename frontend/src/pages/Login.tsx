@@ -85,6 +85,9 @@ export function Login({ onLogin }: LoginProps) {
             Esqueci minha senha
           </Link>
         </form>
+        <p className="versao-app" style={{ marginTop: '20px' }}>
+          CRM Videomart Broadcast &middot; v{__APP_BUILD__} &middot; {__BUILD_TIME__}
+        </p>
       </div>
     </div>
   )

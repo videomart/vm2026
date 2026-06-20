@@ -11,8 +11,8 @@ cd "$(dirname "$0")/.."
 echo "==> git pull"
 git pull
 
-export APP_VERSION="$(git rev-parse --short HEAD) ($(git log -1 --format=%cd --date=format:%Y-%m-%d))"
-echo "==> build sem cache (garante que o build novo do frontend/backend entra na imagem) — versão: $APP_VERSION"
+echo "==> build sem cache (garante que o build novo do frontend/backend entra na imagem)"
+echo "    versão exibida no rodapé vem de frontend/src/buildInfo.ts — atualizar a cada commit relevante"
 docker compose build --no-cache backend
 
 echo "==> subindo containers de produção"
