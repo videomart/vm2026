@@ -11,15 +11,38 @@ contasSmtpRouter.get('/', async (_req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT cs.id, cs.nome, cs.host, cs.port, cs.secure, cs.smtp_user, cs.smtp_from,
-             cs.reply_to, cs.limite_dia, cs.ativo, cs.criado_em,
+             cs.reply_to, cs.limite_dia, cs.ativo, cs.padrao, cs.criado_em,
              COALESCE(u.total_enviado, 0) AS usado_hoje
       FROM contas_smtp cs
       LEFT JOIN contas_smtp_uso u ON u.conta_id = cs.id AND u.data = CURDATE()
-      ORDER BY cs.nome ASC
+      ORDER BY cs.padrao DESC, cs.nome ASC
     `)
     res.json({ contas: rows })
   } catch {
     res.status(500).json({ erro: 'Erro ao buscar contas SMTP.' })
+  }
+})
+
+// Marca esta conta como padrão (usada em "esqueci minha senha" e envio
+// individual de proposta) — desmarca qualquer outra automaticamente, já que
+// só pode existir uma conta padrão por vez.
+contasSmtpRouter.post('/:id/tornar-padrao', async (req, res) => {
+  const conn = await pool.getConnection()
+  try {
+    await conn.beginTransaction()
+    await conn.query('UPDATE contas_smtp SET padrao = 0')
+    const [r] = await conn.query('UPDATE contas_smtp SET padrao = 1 WHERE id = ? AND ativo = 1', [req.params.id]) as any[]
+    if (r.affectedRows === 0) {
+      await conn.rollback()
+      return res.status(404).json({ erro: 'Conta não encontrada ou inativa.' })
+    }
+    await conn.commit()
+    res.json({ ok: true })
+  } catch {
+    await conn.rollback()
+    res.status(500).json({ erro: 'Erro ao definir conta padrão.' })
+  } finally {
+    conn.release()
   }
 })
 
@@ -51,6 +74,12 @@ contasSmtpRouter.put('/:id', async (req, res) => {
     if (!nome?.trim() || !host?.trim() || !smtp_user?.trim()) {
       return res.status(400).json({ erro: 'nome, host e smtp_user são obrigatórios.' })
     }
+    if (!ativo) {
+      const [rows] = await pool.query('SELECT padrao FROM contas_smtp WHERE id = ?', [req.params.id]) as any[]
+      if (rows[0]?.padrao) {
+        return res.status(409).json({ erro: 'Esta é a conta padrão (usada em "esqueci minha senha" e propostas) — defina outra como padrão antes de desativar.' })
+      }
+    }
     // senha é opcional na edição: só atualiza se for enviada (evita sobrescrever com vazio)
     const campos = [
       'nome = ?', 'host = ?', 'port = ?', 'secure = ?', 'smtp_user = ?',
@@ -76,6 +105,10 @@ contasSmtpRouter.put('/:id', async (req, res) => {
 
 contasSmtpRouter.delete('/:id', async (req, res) => {
   try {
+    const [rows] = await pool.query('SELECT padrao FROM contas_smtp WHERE id = ?', [req.params.id]) as any[]
+    if (rows[0]?.padrao) {
+      return res.status(409).json({ erro: 'Esta é a conta padrão (usada em "esqueci minha senha" e propostas) — defina outra como padrão antes de remover.' })
+    }
     await pool.query('DELETE FROM contas_smtp WHERE id = ?', [req.params.id])
     res.json({ ok: true })
   } catch {

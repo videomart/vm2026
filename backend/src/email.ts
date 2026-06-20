@@ -25,21 +25,25 @@ type ContaSmtp = {
   limiteDia: number
 }
 
-// Retorna config SMTP única (setup): usada no envio individual (proposta por e-mail),
-// que não precisa de rotação de caixas — prioriza setup do banco, cai para .env.
+// Retorna a conta SMTP marcada como "padrão" (Configurações > Contas SMTP) —
+// usada no envio individual (reset de senha, proposta por e-mail), que não
+// precisa de rotação de caixas. Cai para .env só se nenhuma conta padrão
+// existir (instalação nova sem nenhuma conta cadastrada ainda).
 async function getSmtpConfig() {
   try {
-    const [rows] = await pool.query('SELECT smtp_host, smtp_port, smtp_secure, smtp_user, smtp_pass, smtp_from, smtp_limite_hora FROM setup WHERE id = 1')
+    const [rows] = await pool.query(
+      'SELECT host, port, secure, smtp_user, smtp_pass, smtp_from, limite_dia FROM contas_smtp WHERE padrao = 1 AND ativo = 1 LIMIT 1',
+    )
     const s = (rows as any[])[0]
-    if (s?.smtp_host && s?.smtp_user) {
+    if (s?.host && s?.smtp_user) {
       return {
-        host: s.smtp_host as string,
-        port: Number(s.smtp_port ?? 587),
-        secure: Boolean(s.smtp_secure),
+        host: s.host as string,
+        port: Number(s.port ?? 587),
+        secure: Boolean(s.secure),
         user: s.smtp_user as string,
         pass: s.smtp_pass as string,
         from: (s.smtp_from ?? s.smtp_user) as string,
-        limiteHora: Number(s.smtp_limite_hora ?? 100),
+        limiteHora: Number(s.limite_dia ?? 100),
       }
     }
   } catch { /* fallback para env */ }

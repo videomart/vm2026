@@ -11,6 +11,7 @@ type Conta = {
   reply_to: string | null
   limite_dia: number
   ativo: boolean
+  padrao: boolean
   usado_hoje: number
 }
 
@@ -113,15 +114,29 @@ export function ContasSmtp() {
     }
   }
 
+  async function tornarPadrao(id: number) {
+    setErro(null)
+    try {
+      const res = await fetch(`/api/contas-smtp/${id}/tornar-padrao`, { method: 'POST', credentials: 'include' })
+      if (!res.ok) { const d = await res.json().catch(() => null); setErro(d?.erro ?? 'Erro ao definir conta padrão.'); return }
+      setMsg('Conta definida como padrão.')
+      carregar()
+    } catch {
+      setErro('Erro de conexão.')
+    }
+  }
+
   if (carregando) return <p>Carregando...</p>
 
   return (
     <section>
-      <h2>Contas SMTP (envio de campanhas)</h2>
+      <h2>Contas SMTP</h2>
       <p style={{ fontSize: '13px', color: 'var(--text)', marginBottom: '16px' }}>
-        Cadastre as caixas de e-mail usadas para disparo de campanhas. O sistema distribui
-        os destinatários em rotação entre as contas ativas, respeitando o limite diário de
-        cada uma (ex.: Hostinger limita 100 e-mails/dia por caixa postal).
+        Cadastre as caixas de e-mail usadas para envio. Campanhas em massa distribuem os
+        destinatários em rotação entre as contas ativas, respeitando o limite diário de
+        cada uma (ex.: Hostinger limita 100 e-mails/dia por caixa postal). A conta marcada
+        como <strong style={{ color: 'var(--text-h)' }}>padrão</strong> é usada para "esqueci
+        minha senha" e envio individual de proposta.
       </p>
 
       {msg && <p className="alerta-sucesso" role="status">{msg}</p>}
@@ -150,7 +165,9 @@ export function ContasSmtp() {
                 {lista.map((c) => (
                   <tr key={c.id} style={{ background: editandoId === c.id ? 'var(--bg-alt)' : undefined }}>
                     <td onClick={() => editar(c)} style={{ cursor: 'pointer' }}>
-                      {c.nome}<br />
+                      {c.nome}
+                      {c.padrao && <span className="badge badge-sucesso" style={{ marginLeft: '6px', fontSize: '10px' }}>padrão</span>}
+                      <br />
                       <span style={{ fontSize: '11px', color: 'var(--text)' }}>{c.smtp_user}</span>
                     </td>
                     <td>{c.usado_hoje}/{c.limite_dia}</td>
@@ -231,6 +248,11 @@ export function ContasSmtp() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '12px' }}>
+            {editandoId && !lista.find((c) => c.id === editandoId)?.padrao && (
+              <button className="botao-secundario" type="button" onClick={() => tornarPadrao(editandoId)} style={{ marginRight: 'auto' }}>
+                Tornar padrão
+              </button>
+            )}
             {editandoId && <button className="botao-secundario" type="button" onClick={nova}>Cancelar</button>}
             <button className="botao" type="button" onClick={salvar} disabled={salvando}>
               {salvando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Criar conta'}
