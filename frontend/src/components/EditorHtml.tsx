@@ -130,12 +130,20 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
               Este conteúdo é uma página HTML completa (com &lt;head&gt;/&lt;style&gt;) e será enviado exatamente como está, sem edição visual — o editor não consegue representar páginas completas sem perda de conteúdo.
             </p>
           )}
-          <textarea
-            className="editor-html-bruto sem-uppercase"
-            value={htmlBruto}
-            onChange={(e) => onChangeHtmlBruto(e.target.value)}
-            placeholder="<p>Cole ou edite o HTML aqui...</p>"
-          />
+          <div className="editor-html-split">
+            <textarea
+              className="editor-html-bruto sem-uppercase"
+              value={htmlBruto}
+              onChange={(e) => onChangeHtmlBruto(e.target.value)}
+              placeholder="<p>Cole ou edite o HTML aqui...</p>"
+            />
+            <iframe
+              className="editor-html-preview"
+              title="Preview do e-mail"
+              srcDoc={htmlBruto}
+              sandbox=""
+            />
+          </div>
         </>
       ) : (
         <EditorContent editor={editor} placeholder={placeholder} />
