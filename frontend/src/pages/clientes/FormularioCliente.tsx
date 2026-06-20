@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   mascaraCNPJouCPF,
   mascaraTelefone,
@@ -12,12 +12,27 @@ import {
 } from '../../utils/validacoes'
 import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
 import { NavegadorRegistro } from '../../components/NavegadorRegistro'
-import { formatarData } from '../../utils/formatar'
+import { formatarData, formatarMoeda } from '../../utils/formatar'
 import type { Cliente } from './types'
 
 type Condicao = { id: number; descricao: string }
 type Contato = { id: number; nome: string; telefone: string | null; email: string | null; email_invalido?: 0 | 1 }
 type CategoriaCliente = { id: number; nome: string }
+type PropostaHistorico = { id: number; data: string; status: 'aberta' | 'aprovada' | 'recusada' | 'convertida'; total: string; vendedor_nome: string }
+
+const LABEL_STATUS_PROPOSTA: Record<PropostaHistorico['status'], string> = {
+  aberta: 'Aberta',
+  aprovada: 'Aprovada',
+  recusada: 'Recusada',
+  convertida: 'Convertida',
+}
+
+const CLASSE_STATUS_PROPOSTA: Record<PropostaHistorico['status'], string> = {
+  aberta: 'badge badge-ativo',
+  aprovada: 'badge badge-sucesso',
+  recusada: 'badge badge-inativo',
+  convertida: 'badge badge-convertida',
+}
 
 type CamposFormulario = Omit<Cliente, 'id' | 'ativo' | 'criado_em' | 'categoria_cliente_id' | 'categoria_cliente_nome' | 'email_invalido'> & {
   categoria_cliente_id: string
@@ -87,6 +102,9 @@ export function FormularioCliente() {
   const [editandoContato, setEditandoContato] = useState<number | null>(null)
   const [editContato, setEditContato] = useState(CONTATO_VAZIO)
 
+  // Linha do tempo: propostas desse cliente
+  const [propostasHistorico, setPropostasHistorico] = useState<PropostaHistorico[]>([])
+
   useEffect(() => {
     fetch('/api/setup/condicoes', { credentials: 'include' })
       .then((r) => r.json())
@@ -103,11 +121,13 @@ export function FormularioCliente() {
     Promise.all([
       fetch(`/api/clientes/${id}`, { credentials: 'include' }).then((r) => r.ok ? r.json() : Promise.reject()),
       fetch(`/api/clientes/${id}/contatos`, { credentials: 'include' }).then((r) => r.json()),
+      fetch(`/api/propostas?clienteId=${id}`, { credentials: 'include' }).then((r) => r.ok ? r.json() : { propostas: [] }),
     ])
-      .then(([data, cdata]) => {
+      .then(([data, cdata, pdata]) => {
         setCampos(paraFormulario(data.cliente))
         setCriadoEm(data.cliente.criado_em ?? null)
         setContatos(cdata.contatos ?? [])
+        setPropostasHistorico(pdata.propostas ?? [])
       })
       .catch(() => setErro('Não foi possível carregar o cliente.'))
       .finally(() => setCarregando(false))
@@ -484,6 +504,47 @@ export function FormularioCliente() {
           )}
           {contatos.length === 0 && (
             <p style={{ fontSize: '13px', color: 'var(--text)' }}>Nenhum contato cadastrado. Use o formulário acima para adicionar.</p>
+          )}
+        </div>
+      )}
+
+      {/* ── Linha do tempo: propostas ────────────────────────────────── */}
+      {editando && (
+        <div style={{ marginTop: '24px' }}>
+          <h3 style={{ fontSize: '15px', borderBottom: '1px solid var(--border)', paddingBottom: '6px', marginBottom: '14px' }}>
+            Histórico de propostas
+          </h3>
+          {propostasHistorico.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--text)' }}>Nenhuma proposta registrada para este cliente.</p>
+          ) : (
+            <div className="tabela-wrapper">
+              <table className="tabela">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Data</th>
+                    <th>Vendedor</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {propostasHistorico.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.id}</td>
+                      <td>{formatarData(p.data)}</td>
+                      <td>{p.vendedor_nome}</td>
+                      <td>{formatarMoeda(p.total)}</td>
+                      <td><span className={CLASSE_STATUS_PROPOSTA[p.status]}>{LABEL_STATUS_PROPOSTA[p.status]}</span></td>
+                      <td>
+                        <Link className="botao-link" to={`/propostas/${p.id}`}>Ver</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

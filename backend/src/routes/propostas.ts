@@ -58,7 +58,7 @@ async function salvarItens(conn: PoolConnection, propostaId: number, itens: Item
 // ------------------------------------------------------------------
 propostasRouter.get('/', async (req, res) => {
   try {
-    const { status, q } = req.query as Record<string, string>
+    const { status, q, clienteId } = req.query as Record<string, string>
     let sql = `
       SELECT p.id, p.data, p.validade, p.status, p.total, p.desconto,
              c.razao_social AS cliente_nome, u.nome AS vendedor_nome
@@ -69,6 +69,7 @@ propostasRouter.get('/', async (req, res) => {
     const params: unknown[] = []
     const filtros: string[] = []
     if (status) { filtros.push('p.status = ?'); params.push(status) }
+    if (clienteId) { filtros.push('p.cliente_id = ?'); params.push(Number(clienteId)) }
     if (q?.trim()) {
       filtros.push('(c.razao_social LIKE ? OR c.nome_fantasia LIKE ?)')
       params.push(`%${q.trim()}%`, `%${q.trim()}%`)
