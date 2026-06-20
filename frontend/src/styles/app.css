@@ -1437,7 +1437,7 @@
 
 .editor-html-preview {
   width: 100%;
-  min-height: 180px;
+  aspect-ratio: 16 / 9;
   max-height: 420px;
   border: none;
   background: #fff;
