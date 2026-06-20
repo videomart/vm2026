@@ -678,6 +678,17 @@
   border-bottom: none;
 }
 
+/* SLA: lead novo sem vendedor há muito tempo — sobrepõe o zebrado */
+.tabela tbody tr.linha-atrasada,
+.tabela tbody tr.linha-atrasada:nth-child(even) {
+  background: var(--perigo-bg);
+}
+
+.tabela tbody tr.linha-atrasada:hover {
+  background: var(--perigo-bg);
+  filter: brightness(1.15);
+}
+
 /* Paginação */
 
 .paginacao {

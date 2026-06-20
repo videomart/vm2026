@@ -23,6 +23,16 @@ function formatarData(data: string) {
   return new Date(data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+// SLA: lead "novo" sem vendedor designado há mais de 24h fica em risco de
+// perder a janela de contato rápido (que converte melhor) — destaque visual
+// para não passar batido no grid.
+const SLA_HORAS = 24
+function estaAtrasado(lead: Lead): boolean {
+  if (lead.status !== 'novo' || lead.vendedor_id) return false
+  const horasDesdeRecebido = (Date.now() - new Date(lead.criado_em).getTime()) / 3600000
+  return horasDesdeRecebido > SLA_HORAS
+}
+
 export function ListaLeads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
@@ -123,7 +133,7 @@ export function ListaLeads() {
               </thead>
               <tbody>
                 {grid.pagina_atual.map((l) => (
-                  <tr key={l.id}>
+                  <tr key={l.id} className={estaAtrasado(l) ? 'linha-atrasada' : ''}>
                     <td>{l.id}</td>
                     <td>
                       {l.nome_empresa ?? '—'}
@@ -136,7 +146,14 @@ export function ListaLeads() {
                     <td>{l.cidade ?? '—'}{l.uf ? `/${l.uf}` : ''}</td>
                     <td>{l.origem ?? '—'}</td>
                     <td>{l.vendedor_nome ?? '—'}</td>
-                    <td><span className={CLASSES_STATUS[l.status]}>{LABELS_STATUS[l.status]}</span></td>
+                    <td>
+                      <span className={CLASSES_STATUS[l.status]}>{LABELS_STATUS[l.status]}</span>
+                      {estaAtrasado(l) && (
+                        <span className="badge badge-inativo" style={{ marginLeft: '4px', background: 'var(--perigo-bg)', color: 'var(--perigo)' }} title={`Sem vendedor há mais de ${SLA_HORAS}h`}>
+                          atrasado
+                        </span>
+                      )}
+                    </td>
                     <td>{formatarData(l.criado_em)}</td>
                     <td>
                       <div className="acoes">
