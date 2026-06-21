@@ -5,6 +5,79 @@ import { requireAuth } from '../auth/middleware.js'
 export const contasReceberRouter = Router()
 contasReceberRouter.use(requireAuth)
 
+const PERIODOS = ['semana', 'mes', 'ano'] as const
+type Periodo = (typeof PERIODOS)[number]
+
+const INICIO_PERIODO: Record<Periodo, string> = {
+  semana: 'DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)',
+  mes: "DATE_FORMAT(CURDATE(), '%Y-%m-01')",
+  ano: "DATE_FORMAT(CURDATE(), '%Y-01-01')",
+}
+
+const FIM_PERIODO: Record<Periodo, string> = {
+  semana: 'DATE_ADD(DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY), INTERVAL 6 DAY)',
+  mes: "LAST_DAY(CURDATE())",
+  ano: "DATE_FORMAT(CURDATE(), '%Y-12-31')",
+}
+
+// ─── Relatório (resumo por status + lista detalhada no período) ────────────────
+
+contasReceberRouter.get('/relatorio', async (req, res) => {
+  try {
+    const periodoParam = req.query.periodo as string | undefined
+    const periodo: Periodo = (PERIODOS as readonly string[]).includes(periodoParam ?? '')
+      ? (periodoParam as Periodo)
+      : 'mes'
+    const inicio = INICIO_PERIODO[periodo]
+    const fim = FIM_PERIODO[periodo]
+
+    await pool.query(
+      `UPDATE contas_a_receber SET status = 'atrasado' WHERE status = 'pendente' AND vencimento < CURDATE()`,
+    )
+
+    const [porStatus] = await pool.query(`
+      SELECT cr.status, COUNT(*) AS total, COALESCE(SUM(cr.valor), 0) AS valor_total,
+             COALESCE(SUM((SELECT SUM(r.valor) FROM recebimentos r WHERE r.conta_id = cr.id)), 0) AS valor_recebido
+      FROM contas_a_receber cr
+      WHERE cr.vencimento BETWEEN ${inicio} AND ${fim}
+      GROUP BY cr.status
+    `) as any[]
+
+    const resumo: Record<string, { total: number; valor_total: number; valor_recebido: number }> = {
+      pendente: { total: 0, valor_total: 0, valor_recebido: 0 },
+      parcial: { total: 0, valor_total: 0, valor_recebido: 0 },
+      pago: { total: 0, valor_total: 0, valor_recebido: 0 },
+      atrasado: { total: 0, valor_total: 0, valor_recebido: 0 },
+    }
+    for (const row of porStatus as any[]) {
+      resumo[row.status] = {
+        total: Number(row.total),
+        valor_total: Number(row.valor_total),
+        valor_recebido: Number(row.valor_recebido),
+      }
+    }
+
+    const [contas] = await pool.query(`
+      SELECT cr.id, cr.descricao, cr.valor, cr.vencimento, cr.status, cr.pago_em,
+             cr.origem_tipo, cr.numero_parcela, cr.total_parcelas,
+             c.razao_social AS cliente_nome,
+             u.nome AS vendedor_nome,
+             COALESCE((SELECT SUM(r.valor) FROM recebimentos r WHERE r.conta_id = cr.id), 0) AS total_recebido
+      FROM contas_a_receber cr
+      LEFT JOIN vendas v ON v.id = cr.venda_id
+      LEFT JOIN assinaturas a ON a.id = cr.assinatura_id
+      JOIN clientes c ON c.id = COALESCE(v.cliente_id, a.cliente_id)
+      LEFT JOIN usuarios u ON u.id = v.vendedor_id
+      WHERE cr.vencimento BETWEEN ${inicio} AND ${fim}
+      ORDER BY cr.vencimento ASC
+    `)
+
+    res.json({ periodo, resumo, contas })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao gerar relatório de contas a receber.' })
+  }
+})
+
 async function recalcularStatus(contaId: number) {
   const [rows] = await pool.query(
     `SELECT cr.valor, cr.vencimento, cr.status,

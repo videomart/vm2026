@@ -29,10 +29,14 @@ import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
 import { ListaContasReceber } from './pages/contasReceber/ListaContasReceber'
 import { ListaAssinaturas } from './pages/contasReceber/ListaAssinaturas'
+import { RelatorioContasReceber } from './pages/contasReceber/RelatorioContasReceber'
+import { ImpressaoRelatorioContasReceber } from './pages/contasReceber/ImpressaoRelatorioContasReceber'
 import { ListaContasPagar } from './pages/contasPagar/ListaContasPagar'
 import { DespesasRecorrentes } from './pages/contasPagar/DespesasRecorrentes'
 import { Fornecedores } from './pages/contasPagar/Fornecedores'
 import { CategoriasDespesa } from './pages/contasPagar/CategoriasDespesa'
+import { RelatorioContasPagar } from './pages/contasPagar/RelatorioContasPagar'
+import { ImpressaoRelatorioContasPagar } from './pages/contasPagar/ImpressaoRelatorioContasPagar'
 import { LogoEmpresa } from './components/LogoEmpresa'
 
 type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
@@ -95,6 +99,8 @@ function App() {
     return (
       <Routes>
         <Route path="/propostas/:id/imprimir" element={<ImpressaoProposta />} />
+        <Route path="/contas-receber/relatorio/imprimir" element={<ImpressaoRelatorioContasReceber />} />
+        <Route path="/contas-pagar/relatorio/imprimir" element={<ImpressaoRelatorioContasPagar />} />
       </Routes>
     )
   }
@@ -143,7 +149,9 @@ function App() {
           {financeiroAberto && (
             <div className="menu-subgrupo">
               <NavLink to="/contas-receber" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a receber</NavLink>
+              <NavLink to="/contas-receber/relatorio" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Relatório de recebíveis</NavLink>
               <NavLink to="/contas-pagar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas a pagar</NavLink>
+              <NavLink to="/contas-pagar/relatorio" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Relatório de despesas</NavLink>
               <NavLink to="/fornecedores" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Fornecedores</NavLink>
               <NavLink to="/categorias-despesa" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de despesa</NavLink>
             </div>
@@ -199,8 +207,10 @@ function App() {
           <Route path="/propostas/:id" element={<FormularioProposta />} />
           <Route path="/contas-receber" element={<ListaContasReceber />} />
           <Route path="/contas-receber/assinaturas" element={<ListaAssinaturas />} />
+          <Route path="/contas-receber/relatorio" element={<RelatorioContasReceber />} />
           <Route path="/contas-pagar" element={<ListaContasPagar />} />
           <Route path="/contas-pagar/recorrentes" element={<DespesasRecorrentes />} />
+          <Route path="/contas-pagar/relatorio" element={<RelatorioContasPagar />} />
           <Route path="/leads" element={<ListaLeads />} />
           <Route path="/leads/novo" element={<FormularioLead />} />
           <Route path="/leads/:id" element={<FormularioLead />} />
