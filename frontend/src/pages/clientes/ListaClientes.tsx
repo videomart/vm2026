@@ -137,11 +137,11 @@ export function ListaClientes() {
                       )}
                     </td>
                     <td>
-                      <div className="acoes">
-                        <button className="botao-link" type="button" onClick={() => editarCliente(cliente.id)}>Editar</button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <button className="botao-link" type="button" style={{ width: '70px', textAlign: 'left' }} onClick={() => editarCliente(cliente.id)}>Editar</button>
                         {cliente.ativo
-                          ? <button className="botao-perigo" type="button" onClick={() => inativar(cliente)}>Inativar</button>
-                          : <button className="botao-secundario" type="button" onClick={() => reativar(cliente)}>Reativar</button>}
+                          ? <button className="botao-perigo" type="button" style={{ width: '70px' }} onClick={() => inativar(cliente)}>Inativar</button>
+                          : <button className="botao-secundario" type="button" style={{ width: '70px' }} onClick={() => reativar(cliente)}>Reativar</button>}
                       </div>
                     </td>
                   </tr>
