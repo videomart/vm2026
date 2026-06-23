@@ -259,6 +259,28 @@ export function GruposEnvio() {
     }
   }
 
+  function exportarEmails(grupo: Grupo, formato: 'nome_email' | 'so_email') {
+    const linhasClientes = clientesGrupo
+      .filter((c) => c.email)
+      .map((c) => (formato === 'nome_email' ? `${c.nome};${c.email}` : c.email))
+    const linhasExtras = emailsExtra
+      .map((e) => (formato === 'nome_email' ? `${e.nome ?? ''};${e.email}` : e.email))
+    const linhas = [...linhasClientes, ...linhasExtras]
+    if (linhas.length === 0) { setErro('Nenhum e-mail para exportar neste grupo.'); return }
+
+    const conteudo = linhas.join('\n')
+    const nomeArquivo = `${grupo.nome.replace(/[^\w\-]+/g, '_')}_${formato === 'nome_email' ? 'nome_email' : 'emails'}.txt`
+    const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = nomeArquivo
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   async function removerCliente(grupoId: number, clienteId: number) {
     try {
       await fetch(`/api/campanhas/grupos/${grupoId}/clientes/${clienteId}`, { method: 'DELETE', credentials: 'include' })
@@ -336,6 +358,16 @@ export function GruposEnvio() {
                   onClick={() => salvarEdicaoGrupo(g.id)}
                 >
                   {salvandoEdicao ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+
+              {/* Exportar e-mails do grupo */}
+              <div style={{ display: 'flex', gap: '8px', margin: '12px 0' }}>
+                <button className="botao-secundario" type="button" onClick={() => exportarEmails(g, 'nome_email')}>
+                  ⬇ Exportar (Nome;Email)
+                </button>
+                <button className="botao-secundario" type="button" onClick={() => exportarEmails(g, 'so_email')}>
+                  ⬇ Exportar (só e-mail)
                 </button>
               </div>
 

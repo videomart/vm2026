@@ -101,7 +101,7 @@ export function ListaClientes() {
         {!carregando && clientes.length === 0 && <p className="estado-vazio">Nenhum cliente encontrado.</p>}
         {!carregando && clientes.length > 0 && (
           <>
-            <table className="tabela" style={{ minWidth: '1240px' }}>
+            <table className="tabela" style={{ minWidth: '950px' }}>
               <thead>
                 <tr>
                   <th {...grid.th('razao_social')}>Razão social</th>
@@ -117,11 +117,14 @@ export function ListaClientes() {
               <tbody>
                 {grid.pagina_atual.map((cliente) => (
                   <tr key={cliente.id}>
-                    <td>{cliente.razao_social}</td>
+                    <td style={{ maxWidth: '220px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cliente.razao_social}>{cliente.razao_social}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{cliente.cnpj_cpf ? formatarCNPJCPF(cliente.cnpj_cpf) : '—'}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{cliente.telefone ? formatarTelefone(cliente.telefone) : '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{cliente.cidade ?? '—'}{cliente.uf ? `/${cliente.uf}` : ''}</td>
-                    <td>{cliente.categoria_cliente_nome ?? '—'}</td>
+                    <td style={{ maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cliente.cidade ?? undefined}>
+                      {cliente.cidade ?? '—'}
+                      {cliente.uf && <span style={{ display: 'block', fontSize: '11px', color: 'var(--text)' }}>{cliente.uf}</span>}
+                    </td>
+                    <td style={{ maxWidth: '110px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={cliente.categoria_cliente_nome ?? undefined}>{cliente.categoria_cliente_nome ?? '—'}</td>
                     <td>{formatarData(cliente.criado_em)}</td>
                     <td>
                       {cliente.ativo

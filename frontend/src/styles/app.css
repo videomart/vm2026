@@ -626,7 +626,7 @@
 .tabela th,
 .tabela td {
   text-align: left;
-  padding: 11px 16px;
+  padding: 10px 10px;
   border-bottom: 1px solid var(--border);
 }
 
