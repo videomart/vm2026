@@ -1156,6 +1156,29 @@
   margin-top: 1px;
 }
 
+.impressao-composicao {
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-left: 3px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+.impressao-composicao-titulo {
+  color: #444;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.impressao-composicao-itens {
+  font-size: 11px;
+  color: #333;
+  white-space: pre-line;
+}
+
 .impressao-totais {
   display: flex;
   flex-direction: column;

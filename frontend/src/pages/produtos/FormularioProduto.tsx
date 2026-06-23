@@ -4,13 +4,15 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useNavegacaoRegistro } from '../../hooks/useNavegacaoRegistro'
 import { NavegadorRegistro } from '../../components/NavegadorRegistro'
 import { formatarMoeda } from '../../utils/formatar'
-import type { Produto } from './types'
+import type { ComposicaoHardware, Produto, TipoOferta } from './types'
 
 type CamposFormulario = {
   modelo: string
   descricao: string
   marca: string
   categoria: string
+  tipo_oferta: TipoOferta
+  composicao_hardware: string
   preco_custo: string
   preco_venda: string
   moeda: 'BRL' | 'USD'
@@ -23,11 +25,19 @@ const CAMPOS_VAZIOS: CamposFormulario = {
   descricao: '',
   marca: '',
   categoria: '',
+  tipo_oferta: 'software_venda',
+  composicao_hardware: '',
   preco_custo: '',
   preco_venda: '',
   moeda: 'BRL',
   preco_usd: '',
   peso: '',
+}
+
+const LABELS_TIPO_OFERTA: Record<TipoOferta, string> = {
+  turnkey: 'Solução integrada (turnkey)',
+  software_venda: 'Software - venda',
+  saas: 'Software - SaaS',
 }
 
 function paraFormulario(produto: Produto): CamposFormulario {
@@ -36,6 +46,8 @@ function paraFormulario(produto: Produto): CamposFormulario {
     descricao: produto.descricao ?? '',
     marca: produto.marca ?? '',
     categoria: produto.categoria ?? '',
+    tipo_oferta: produto.tipo_oferta ?? 'software_venda',
+    composicao_hardware: produto.composicao_hardware ?? '',
     preco_custo: produto.preco_custo ?? '',
     preco_venda: produto.preco_venda ?? '',
     moeda: produto.moeda === 'USD' ? 'USD' : 'BRL',
@@ -62,6 +74,7 @@ export function FormularioProduto() {
   const [precoSugerido, setPrecoSugerido] = useState<number | null>(null)
   const [listaMarcas, setListaMarcas] = useState<string[]>([])
   const [listaCategorias, setListaCategorias] = useState<string[]>([])
+  const [listaComposicoes, setListaComposicoes] = useState<ComposicaoHardware[]>([])
   const setupRef = useRef<{ fator: number; cotacao: number | null }>({ fator: 1.3, cotacao: null })
   const descricaoEditada = useRef(false)
 
@@ -75,13 +88,15 @@ export function FormularioProduto() {
       fetch('/api/setup/cotacao', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       fetch('/api/marcas', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
       fetch('/api/categorias', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
-    ]).then(([ds, dco, dm, dc]) => {
+      fetch('/api/composicoes-hardware', { credentials: 'include' }).then((r) => r.json()).catch(() => null),
+    ]).then(([ds, dco, dm, dc, dch]) => {
       setupRef.current = {
         fator: Number(ds?.setup?.fator_markup_usd ?? 1.3),
         cotacao: dco?.cotacao?.valor ? Number(dco.cotacao.valor) : null,
       }
       setListaMarcas((dm?.marcas ?? []).map((m: { nome: string }) => m.nome))
       setListaCategorias((dc?.categorias ?? []).map((c: { nome: string }) => c.nome))
+      setListaComposicoes(dch?.composicoes ?? [])
     })
 
     if (!editando) return
@@ -150,6 +165,7 @@ export function FormularioProduto() {
 
     const body: Record<string, unknown> = { ...campos }
     if (campos.moeda === 'BRL') body.preco_usd = null
+    if (campos.tipo_oferta !== 'turnkey') body.composicao_hardware = null
 
     try {
       const res = await fetch(editando ? `/api/produtos/${id}` : '/api/produtos', {
@@ -263,6 +279,50 @@ export function FormularioProduto() {
               onChange={(e) => onDescricaoChange(e.target.value)}
             />
           </div>
+
+          {/* Linha extra: Tipo de oferta */}
+          <div className="campo">
+            <label htmlFor="tipo_oferta">Tipo de oferta</label>
+            <select
+              id="tipo_oferta"
+              value={campos.tipo_oferta}
+              onChange={(e) => atualizar('tipo_oferta', e.target.value as TipoOferta)}
+            >
+              {Object.entries(LABELS_TIPO_OFERTA).map(([valor, label]) => (
+                <option key={valor} value={valor}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Se turnkey: composição de hardware */}
+          {campos.tipo_oferta === 'turnkey' && (
+            <div className="campo campo-largo">
+              <label htmlFor="composicao_hardware">Composição do hardware</label>
+              {listaComposicoes.length > 0 && (
+                <select
+                  id="composicao_hardware_select"
+                  value=""
+                  onChange={(e) => {
+                    const comp = listaComposicoes.find((c) => String(c.id) === e.target.value)
+                    if (comp) setCampos((prev) => ({ ...prev, composicao_hardware: comp.itens }))
+                  }}
+                  style={{ marginBottom: '4px' }}
+                >
+                  <option value="">— Carregar composição padrão —</option>
+                  {listaComposicoes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select>
+              )}
+              <textarea
+                id="composicao_hardware"
+                className="sem-uppercase"
+                rows={6}
+                placeholder="1 item por linha (ex.: Processador i7, 16GB RAM, SSD 512GB)"
+                value={campos.composicao_hardware}
+                onChange={(e) => atualizar('composicao_hardware', e.target.value)}
+                style={{ resize: 'vertical' }}
+              />
+            </div>
+          )}
 
           {/* Linha 3: Moeda | Preço de compra | (USD) | Preço de venda */}
           <div className="campo">

@@ -11,6 +11,7 @@ propostasRouter.use(requireAuth)
 type ItemInput = {
   produto_id?: number | null
   descricao: string
+  composicao_hardware?: string | null
   quantidade: number
   valor_unitario: number
   desconto?: number
@@ -35,6 +36,7 @@ async function salvarItens(conn: PoolConnection, propostaId: number, itens: Item
       propostaId,
       item.produto_id ?? null,
       item.descricao,
+      item.composicao_hardware || null,
       item.quantidade,
       item.valor_unitario,
       item.desconto ?? 0,
@@ -44,7 +46,7 @@ async function salvarItens(conn: PoolConnection, propostaId: number, itens: Item
 
   await conn.query(
     `INSERT INTO proposta_itens
-       (proposta_id, produto_id, descricao, quantidade, valor_unitario, desconto, subtotal)
+       (proposta_id, produto_id, descricao, composicao_hardware, quantidade, valor_unitario, desconto, subtotal)
      VALUES ?`,
     [rows],
   )

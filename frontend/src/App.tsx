@@ -20,6 +20,7 @@ import { Setup } from './pages/setup/Setup'
 import { Condicoes } from './pages/setup/Condicoes'
 import { ContasSmtp } from './pages/setup/ContasSmtp'
 import { Marcas } from './pages/setup/Marcas'
+import { ComposicoesHardware } from './pages/setup/ComposicoesHardware'
 import { Categorias } from './pages/setup/Categorias'
 import { CategoriasCliente } from './pages/setup/CategoriasCliente'
 import { ListaCampanhas } from './pages/campanhas/ListaCampanhas'
@@ -195,6 +196,7 @@ function App() {
                   <NavLink to="/setup/condicoes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Condições de pagamento</NavLink>
                   <NavLink to="/usuarios" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Usuários</NavLink>
                   <NavLink to="/marcas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Marcas</NavLink>
+                  <NavLink to="/composicoes-hardware" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Composições de hardware</NavLink>
                   <NavLink to="/categorias" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias</NavLink>
                   <NavLink to="/categorias-cliente" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de cliente</NavLink>
                   <NavLink to="/contas-smtp" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas SMTP</NavLink>
@@ -254,6 +256,9 @@ function App() {
           )}
           {usuario.papel === 'admin' && (
             <Route path="/marcas" element={<Marcas />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/composicoes-hardware" element={<ComposicoesHardware />} />
           )}
           {usuario.papel === 'admin' && (
             <Route path="/categorias" element={<Categorias />} />

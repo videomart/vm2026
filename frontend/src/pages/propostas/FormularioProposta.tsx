@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { dataParaInput } from '../../utils/formatar'
@@ -23,6 +23,7 @@ function linkWhatsApp(numero: string | null | undefined, mensagem: string): stri
 const ITEM_VAZIO: ItemFormulario = {
   produto_id: null,
   descricao: '',
+  composicao_hardware: '',
   quantidade: '1',
   valor_unitario: '0',
   desconto: '0',
@@ -59,7 +60,7 @@ const LABELS_STATUS: Record<StatusProposta, string> = {
 export function FormularioProposta() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const editando = Boolean(id)
+  const editando = id !== undefined && /^\d+$/.test(id)
 
   // dados auxiliares
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -175,6 +176,7 @@ export function FormularioProposta() {
             setItens(p.itens.map((item: any) => ({
               produto_id: item.produto_id,
               descricao: item.descricao,
+              composicao_hardware: item.composicao_hardware ?? '',
               quantidade: String(item.quantidade),
               valor_unitario: String(item.valor_unitario),
               desconto: String(item.desconto),
@@ -207,6 +209,7 @@ export function FormularioProposta() {
         ...item,
         produto_id: pid,
         descricao: produto.modelo,
+        composicao_hardware: produto.composicao_hardware ?? '',
         valor_unitario: produto.preco_venda ?? '0',
       }))
     } else {
@@ -265,6 +268,7 @@ export function FormularioProposta() {
         itens: itens.map((item) => ({
           produto_id: item.produto_id,
           descricao: item.descricao,
+          composicao_hardware: item.composicao_hardware || null,
           quantidade: Number(item.quantidade),
           valor_unitario: Number(item.valor_unitario),
           desconto: Number(item.desconto) || 0,
@@ -525,73 +529,94 @@ export function FormularioProposta() {
             </thead>
             <tbody>
               {itens.map((item, idx) => (
-                <tr key={idx}>
-                  <td>
-                    <select
-                      value={item.produto_id ?? ''}
-                      onChange={(e) => selecionarProduto(idx, e.target.value)}
-                      disabled={somenteLeitura}
-                      style={{ width: '100%' }}
-                    >
-                      <option value="">— Livre —</option>
-                      {produtos.map((p) => (
-                        <option key={p.id} value={p.id}>{p.modelo}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <input
-                      value={item.descricao}
-                      onChange={(e) => atualizarItem(idx, 'descricao', e.target.value)}
-                      required
-                      disabled={somenteLeitura}
-                      style={{ width: '100%' }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number" min="0.01" step="0.01"
-                      value={item.quantidade}
-                      onChange={(e) => atualizarItem(idx, 'quantidade', e.target.value)}
-                      required
-                      disabled={somenteLeitura}
-                      style={{ width: '100%' }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={item.valor_unitario}
-                      onChange={(e) => atualizarItem(idx, 'valor_unitario', e.target.value)}
-                      required
-                      disabled={somenteLeitura}
-                      style={{ width: '100%' }}
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number" min="0" step="0.01"
-                      value={item.desconto}
-                      onChange={(e) => atualizarItem(idx, 'desconto', e.target.value)}
-                      disabled={somenteLeitura}
-                      style={{ width: '100%' }}
-                    />
-                  </td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                    {formatarValor(calcSubtotal(item))}
-                  </td>
-                  {!somenteLeitura && (
+                <Fragment key={idx}>
+                  <tr>
                     <td>
-                      <button
-                        type="button"
-                        className="botao-perigo"
-                        onClick={() => removerItem(idx)}
-                        disabled={itens.length === 1}
-                        title="Remover item"
-                      >✕</button>
+                      <select
+                        value={item.produto_id ?? ''}
+                        onChange={(e) => selecionarProduto(idx, e.target.value)}
+                        disabled={somenteLeitura}
+                        style={{ width: '100%' }}
+                      >
+                        <option value="">— Livre —</option>
+                        {produtos.map((p) => (
+                          <option key={p.id} value={p.id}>{p.modelo}</option>
+                        ))}
+                      </select>
                     </td>
+                    <td>
+                      <input
+                        value={item.descricao}
+                        onChange={(e) => atualizarItem(idx, 'descricao', e.target.value)}
+                        required
+                        disabled={somenteLeitura}
+                        style={{ width: '100%' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number" min="0.01" step="0.01"
+                        value={item.quantidade}
+                        onChange={(e) => atualizarItem(idx, 'quantidade', e.target.value)}
+                        required
+                        disabled={somenteLeitura}
+                        style={{ width: '100%' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={item.valor_unitario}
+                        onChange={(e) => atualizarItem(idx, 'valor_unitario', e.target.value)}
+                        required
+                        disabled={somenteLeitura}
+                        style={{ width: '100%' }}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="number" min="0" step="0.01"
+                        value={item.desconto}
+                        onChange={(e) => atualizarItem(idx, 'desconto', e.target.value)}
+                        disabled={somenteLeitura}
+                        style={{ width: '100%' }}
+                      />
+                    </td>
+                    <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      {formatarValor(calcSubtotal(item))}
+                    </td>
+                    {!somenteLeitura && (
+                      <td>
+                        <button
+                          type="button"
+                          className="botao-perigo"
+                          onClick={() => removerItem(idx)}
+                          disabled={itens.length === 1}
+                          title="Remover item"
+                        >✕</button>
+                      </td>
+                    )}
+                  </tr>
+                  {(item.composicao_hardware || (!somenteLeitura && item.produto_id)) && (
+                    <tr>
+                      <td></td>
+                      <td colSpan={somenteLeitura ? 5 : 6} style={{ paddingTop: 0 }}>
+                        <details open={Boolean(item.composicao_hardware)} style={{ fontSize: '12px' }}>
+                          <summary style={{ cursor: 'pointer', color: 'var(--text)' }}>Composição do hardware</summary>
+                          <textarea
+                            className="sem-uppercase"
+                            rows={4}
+                            value={item.composicao_hardware}
+                            onChange={(e) => atualizarItem(idx, 'composicao_hardware', e.target.value)}
+                            disabled={somenteLeitura}
+                            placeholder="1 item por linha"
+                            style={{ width: '100%', marginTop: '4px', resize: 'vertical' }}
+                          />
+                        </details>
+                      </td>
+                    </tr>
                   )}
-                </tr>
+                </Fragment>
               ))}
             </tbody>
           </table>

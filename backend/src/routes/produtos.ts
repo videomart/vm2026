@@ -11,6 +11,8 @@ const CAMPOS_EDITAVEIS = [
   'descricao',
   'marca',
   'categoria',
+  'tipo_oferta',
+  'composicao_hardware',
   'preco_custo',
   'preco_venda',
   'moeda',

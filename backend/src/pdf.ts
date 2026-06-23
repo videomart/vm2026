@@ -35,7 +35,16 @@ export function gerarHtmlProposta(p: any, setup: any, logoBase64?: string | null
       <td style="text-align:right">${fmt(item.valor_unitario)}</td>
       <td style="text-align:right">${Number(item.desconto) > 0 ? fmt(item.desconto) : '—'}</td>
       <td style="text-align:right">${fmt(item.subtotal)}</td>
-    </tr>`).join('')
+    </tr>${item.composicao_hardware ? `
+    <tr>
+      <td></td>
+      <td colspan="5" style="padding-top:0">
+        <div class="composicao">
+          <div class="composicao-titulo">COMPONENTES DO HARDWARE INTEGRADO</div>
+          <div class="composicao-itens">${item.composicao_hardware}</div>
+        </div>
+      </td>
+    </tr>` : ''}`).join('')
 
   const linhasDesconto = descGlobal > 0 ? `
     <tr><td colspan="5" style="text-align:right;border:none">Subtotal</td><td style="text-align:right;border:none">${fmt(subtotalItens)}</td></tr>
@@ -72,6 +81,9 @@ export function gerarHtmlProposta(p: any, setup: any, logoBase64?: string | null
   .rodape strong { display: block; margin-bottom: 2px }
   .rodape .item { margin-bottom: 12px }
   .rodape .item span { white-space: pre-wrap }
+  .composicao { margin: 6px 0 10px; padding: 8px 10px; background: #f8fafc; border-left: 3px solid #cbd5e1; border-radius: 4px }
+  .composicao-titulo { color: #444; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px }
+  .composicao-itens { font-size: 11px; color: #333; white-space: pre-line }
   .assinatura { margin-top: 48px; display: flex; justify-content: space-around }
   .assinatura-bloco { text-align: center; min-width: 200px }
   .assinatura-linha { border-top: 1px solid #222; padding-top: 4px; margin-top: 48px }

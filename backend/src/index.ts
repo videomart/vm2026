@@ -13,6 +13,7 @@ import { propostasRouter } from './routes/propostas.js'
 import { usuariosRouter } from './routes/usuarios.js'
 import { setupRouter } from './routes/setup.js'
 import { marcasRouter } from './routes/marcas.js'
+import { composicoesHardwareRouter } from './routes/composicoesHardware.js'
 import { categoriasRouter } from './routes/categorias.js'
 import { categoriasClienteRouter } from './routes/categoriasCliente.js'
 import { templatesEmailRouter } from './routes/templatesEmail.js'
@@ -45,6 +46,7 @@ app.use('/api/propostas', propostasRouter)
 app.use('/api/usuarios', usuariosRouter)
 app.use('/api/setup', setupRouter)
 app.use('/api/marcas', marcasRouter)
+app.use('/api/composicoes-hardware', composicoesHardwareRouter)
 app.use('/api/categorias', categoriasRouter)
 app.use('/api/categorias-cliente', categoriasClienteRouter)
 app.use('/api/templates-email', templatesEmailRouter)

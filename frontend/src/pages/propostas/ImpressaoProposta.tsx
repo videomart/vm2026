@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { formatarData } from '../../utils/formatar'
 import type { Proposta } from './types'
@@ -163,19 +163,32 @@ export function ImpressaoProposta() {
           </thead>
           <tbody>
             {itens.map((item: any, idx: number) => (
-              <tr key={item.id ?? idx}>
-                <td className="col-item">{idx + 1}</td>
-                <td>
-                  {item.descricao}
-                  {item.produto_modelo && item.produto_modelo !== item.descricao && (
-                    <div className="impressao-modelo">{item.produto_modelo}</div>
-                  )}
-                </td>
-                <td className="col-num">{Number(item.quantidade)}</td>
-                <td className="col-num">{fmt(item.valor_unitario)}</td>
-                <td className="col-num">{Number(item.desconto) > 0 ? fmt(item.desconto) : '—'}</td>
-                <td className="col-num">{fmt(item.subtotal)}</td>
-              </tr>
+              <Fragment key={item.id ?? idx}>
+                <tr>
+                  <td className="col-item">{idx + 1}</td>
+                  <td>
+                    {item.descricao}
+                    {item.produto_modelo && item.produto_modelo !== item.descricao && (
+                      <div className="impressao-modelo">{item.produto_modelo}</div>
+                    )}
+                  </td>
+                  <td className="col-num">{Number(item.quantidade)}</td>
+                  <td className="col-num">{fmt(item.valor_unitario)}</td>
+                  <td className="col-num">{Number(item.desconto) > 0 ? fmt(item.desconto) : '—'}</td>
+                  <td className="col-num">{fmt(item.subtotal)}</td>
+                </tr>
+                {item.composicao_hardware && (
+                  <tr>
+                    <td></td>
+                    <td colSpan={5} style={{ paddingTop: 0 }}>
+                      <div className="impressao-composicao">
+                        <div className="impressao-composicao-titulo">COMPONENTES DO HARDWARE INTEGRADO</div>
+                        <div className="impressao-composicao-itens">{item.composicao_hardware}</div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
             ))}
             {itens.length === 0 && (
               <tr>

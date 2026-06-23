@@ -6,6 +6,7 @@ export type PropostaItem = {
   produto_id: number | null
   produto_modelo: string | null
   descricao: string
+  composicao_hardware: string | null
   quantidade: string
   valor_unitario: string
   desconto: string
@@ -35,6 +36,7 @@ export type Proposta = {
 export type ItemFormulario = {
   produto_id: number | null
   descricao: string
+  composicao_hardware: string
   quantidade: string
   valor_unitario: string
   desconto: string
