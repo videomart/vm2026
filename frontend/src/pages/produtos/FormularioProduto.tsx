@@ -165,6 +165,7 @@ export function FormularioProduto() {
 
     const body: Record<string, unknown> = { ...campos }
     if (campos.moeda === 'BRL') body.preco_usd = null
+    if (campos.moeda === 'USD') body.preco_custo = null
     if (campos.tipo_oferta !== 'turnkey') body.composicao_hardware = null
 
     try {
@@ -336,18 +337,7 @@ export function FormularioProduto() {
               <option value="USD">Dólar (USD)</option>
             </select>
           </div>
-          <div className="campo">
-            <label htmlFor="preco_custo">Preço de compra (R$)</label>
-            <input
-              id="preco_custo"
-              type="number"
-              min="0"
-              step="0.01"
-              value={campos.preco_custo}
-              onChange={(e) => atualizar('preco_custo', e.target.value)}
-            />
-          </div>
-          {campos.moeda === 'USD' && (
+          {campos.moeda === 'USD' ? (
             <div className="campo">
               <label htmlFor="preco_usd">Preço de compra (US$)</label>
               <input
@@ -357,6 +347,18 @@ export function FormularioProduto() {
                 step="0.01"
                 value={campos.preco_usd}
                 onChange={(e) => atualizar('preco_usd', e.target.value)}
+              />
+            </div>
+          ) : (
+            <div className="campo">
+              <label htmlFor="preco_custo">Preço de compra (R$)</label>
+              <input
+                id="preco_custo"
+                type="number"
+                min="0"
+                step="0.01"
+                value={campos.preco_custo}
+                onChange={(e) => atualizar('preco_custo', e.target.value)}
               />
             </div>
           )}
