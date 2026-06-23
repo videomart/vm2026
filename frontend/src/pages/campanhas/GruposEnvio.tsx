@@ -16,6 +16,9 @@ export function GruposEnvio() {
   const [buscando, setBuscando] = useState(false)
   const [novoNome, setNovoNome] = useState('')
   const [novaDesc, setNovaDesc] = useState('')
+  const [edicaoNome, setEdicaoNome] = useState('')
+  const [edicaoDesc, setEdicaoDesc] = useState('')
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   const [categorias, setCategorias] = useState<CategoriaCliente[]>([])
@@ -70,8 +73,33 @@ export function GruposEnvio() {
       setBusca('')
       setResultadoBusca([])
       setTextoImportacao('')
+      const grupo = grupos.find((g) => g.id === id)
+      setEdicaoNome(grupo?.nome ?? '')
+      setEdicaoDesc(grupo?.descricao ?? '')
     } catch {
       setErro('Erro ao carregar clientes do grupo.')
+    }
+  }
+
+  async function salvarEdicaoGrupo(id: number) {
+    if (!edicaoNome.trim()) { setErro('Nome é obrigatório.'); return }
+    setSalvandoEdicao(true)
+    setErro(null)
+    try {
+      const res = await fetch(`/api/campanhas/grupos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ nome: edicaoNome.trim(), descricao: edicaoDesc.trim() || null }),
+      })
+      const d = await res.json()
+      if (!res.ok) { setErro(d.erro ?? 'Erro ao salvar grupo.'); return }
+      setGrupos((prev) => prev.map((g) => g.id === id ? { ...g, nome: edicaoNome.trim(), descricao: edicaoDesc.trim() || null } : g).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+      setMsg('Grupo atualizado.')
+    } catch {
+      setErro('Erro de conexão ao salvar grupo.')
+    } finally {
+      setSalvandoEdicao(false)
     }
   }
 
@@ -252,17 +280,17 @@ export function GruposEnvio() {
 
       {/* Criar grupo */}
       <div style={{ background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px 16px', marginBottom: '20px' }}>
-        <div className="grade-formulario">
-          <div className="campo">
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="campo" style={{ margin: 0, flex: '1 1 200px' }}>
             <label>Nome do grupo</label>
             <input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} placeholder="Ex.: Clientes TVPlay" />
           </div>
-          <div className="campo campo-largo">
+          <div className="campo" style={{ margin: 0, flex: '2 1 320px' }}>
             <label>Descrição (opcional)</label>
             <input value={novaDesc} onChange={(e) => setNovaDesc(e.target.value)} placeholder="Para que serve este grupo?" />
           </div>
+          <button className="botao" type="button" onClick={criarGrupo}>Criar grupo</button>
         </div>
-        <button className="botao" type="button" onClick={criarGrupo}>Criar grupo</button>
       </div>
 
       {grupos.length === 0 && <p style={{ color: 'var(--text)' }}>Nenhum grupo criado ainda.</p>}
@@ -291,6 +319,26 @@ export function GruposEnvio() {
           {/* Painel expandido */}
           {grupoAberto === g.id && (
             <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border)' }}>
+              {/* Editar nome/descrição do grupo */}
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end', margin: '12px 0', flexWrap: 'wrap' }}>
+                <div className="campo" style={{ margin: 0, flex: '1 1 200px' }}>
+                  <label>Nome do grupo</label>
+                  <input value={edicaoNome} onChange={(e) => setEdicaoNome(e.target.value)} />
+                </div>
+                <div className="campo" style={{ margin: 0, flex: '2 1 320px' }}>
+                  <label>Descrição (opcional)</label>
+                  <input value={edicaoDesc} onChange={(e) => setEdicaoDesc(e.target.value)} placeholder="Para que serve este grupo?" />
+                </div>
+                <button
+                  className="botao-secundario"
+                  type="button"
+                  disabled={salvandoEdicao || (edicaoNome === g.nome && edicaoDesc === (g.descricao ?? ''))}
+                  onClick={() => salvarEdicaoGrupo(g.id)}
+                >
+                  {salvandoEdicao ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+
               {/* Adicionar todos os clientes de uma categoria */}
               <div style={{ display: 'flex', gap: '8px', margin: '12px 0', alignItems: 'flex-end' }}>
                 <div className="campo" style={{ margin: 0, flex: 1 }}>
@@ -442,12 +490,12 @@ export function GruposEnvio() {
                 </p>
               ) : (
                 <div className="tabela-wrapper" style={{ marginTop: '8px' }}>
-                  <table className="tabela">
+                  <table className="tabela" style={{ minWidth: '480px' }}>
                     <thead>
                       <tr>
                         <th>Cliente</th>
                         <th>E-mail</th>
-                        <th style={{ width: '80px' }}></th>
+                        <th style={{ width: '120px', whiteSpace: 'nowrap' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -455,7 +503,7 @@ export function GruposEnvio() {
                         <tr key={c.id}>
                           <td>{c.nome}</td>
                           <td>{c.email ?? <em style={{ opacity: 0.5 }}>sem e-mail</em>}</td>
-                          <td>
+                          <td style={{ whiteSpace: 'nowrap' }}>
                             <button className="botao-perigo" type="button" onClick={() => removerCliente(g.id, c.id)}>
                               Remover
                             </button>
