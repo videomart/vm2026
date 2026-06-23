@@ -1,7 +1,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type Props = {
   value: string
@@ -21,6 +21,9 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
   const [modoHtml, setModoHtml] = useState(() => ehPaginaCompleta(value))
   const [htmlBruto, setHtmlBruto] = useState(value)
   const travadoEmHtml = ehPaginaCompleta(htmlBruto)
+  // Guarda o último valor emitido pelo próprio componente (via onChange), para
+  // distinguir "o pai recarregou outro template" de "o usuário está digitando".
+  const ultimoValorEmitido = useRef(value)
 
   const editor = useEditor({
     extensions: [
@@ -28,33 +31,51 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
       Link.configure({ openOnClick: false, autolink: true }),
     ],
     content: modoHtml ? '' : value,
-    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML()
+      ultimoValorEmitido.current = html
+      onChange(html)
+    },
     editorProps: {
       attributes: { class: 'editor-html-conteudo' },
     },
   })
 
-  // sincroniza quando o value muda externamente (ex.: carregar template)
+  // sincroniza quando o value muda externamente (ex.: carregar outro template,
+  // ou limpar ao trocar para "novo template") — ignora mudanças que vieram do
+  // próprio componente (digitação), senão o cursor/estado do editor "pula".
   useEffect(() => {
+    if (value === ultimoValorEmitido.current) return
+    ultimoValorEmitido.current = value
+
     if (ehPaginaCompleta(value)) {
       setHtmlBruto(value)
       setModoHtml(true)
       return
     }
-    if (editor && !modoHtml && value !== editor.getHTML()) {
-      editor.commands.setContent(value || '')
-    }
-  }, [value, editor, modoHtml])
+    // value normal (não página completa) chegou de fora: sempre volta para o
+    // editor visual e limpa o HTML bruto, senão o conteúdo do template
+    // anterior fica preso na tela ao trocar/criar template.
+    setHtmlBruto(value || '')
+    setModoHtml(false)
+    if (editor) editor.commands.setContent(value || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, editor])
+
+  function emitirChange(html: string) {
+    ultimoValorEmitido.current = html
+    onChange(html)
+  }
 
   function alternarModo() {
     if (!editor) return
     if (modoHtml) {
       if (ehPaginaCompleta(htmlBruto)) {
         // página completa: aplica direto, sem passar pelo editor (evitaria perda de conteúdo)
-        onChange(htmlBruto)
+        emitirChange(htmlBruto)
       } else {
         editor.commands.setContent(htmlBruto || '')
-        onChange(editor.getHTML())
+        emitirChange(editor.getHTML())
       }
     } else {
       setHtmlBruto(editor.getHTML())
@@ -64,7 +85,7 @@ export function EditorHtml({ value, onChange, placeholder }: Props) {
 
   function onChangeHtmlBruto(novoHtml: string) {
     setHtmlBruto(novoHtml)
-    if (ehPaginaCompleta(novoHtml)) onChange(novoHtml)
+    emitirChange(novoHtml)
   }
 
   if (!editor) return null
