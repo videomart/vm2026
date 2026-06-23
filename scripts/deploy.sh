@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Deploy de produção: git pull + rebuild sem cache + restart + migrations.
+# Deploy de produção: git pull + rebuild (com cache de camadas) + restart + migrations.
+# Equivalente a "git pull && docker compose up -d --build" + aplicar migrations —
+# use este script para não esquecer das migrations, mas o build em si não precisa
+# de --no-cache no dia a dia (ver comentário abaixo).
 #
 # docker-compose.yml (sem sufixo) é o de PRODUÇÃO nesta VPS — de propósito,
 # para que "docker compose up -d --build" simples, sem "-f", já seja sempre
@@ -11,9 +14,12 @@ cd "$(dirname "$0")/.."
 echo "==> git pull"
 git pull
 
-echo "==> build sem cache (garante que o build novo do frontend/backend entra na imagem)"
+echo "==> build (com cache de camadas — o Dockerfile copia package*.json antes do"
+echo "    código, então npm ci/apt-get só reroda quando essas dependências mudam;"
+echo "    qualquer arquivo alterado em backend/ ou frontend/ invalida o cache a partir"
+echo "    do COPY do código, então a versão nova SEMPRE entra na imagem)"
 echo "    versão exibida no rodapé vem de frontend/src/buildInfo.ts — atualizar a cada commit relevante"
-docker compose build --no-cache backend
+docker compose build backend
 
 echo "==> subindo containers de produção"
 docker compose up -d
