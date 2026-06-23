@@ -42,9 +42,34 @@ export function ListaLeads() {
   const [busca, setBusca] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [selecionados, setSelecionados] = useState<Set<number>>(new Set())
 
   const grid = useGrid(leads, 'id', 30, 'desc')
   const { ref: wrapperRef, temOverflow } = useOverflowHorizontal<HTMLDivElement>()
+
+  const idsNaPagina = grid.pagina_atual.map((l) => l.id)
+  const todosNaPaginaSelecionados = idsNaPagina.length > 0 && idsNaPagina.every((id) => selecionados.has(id))
+
+  function alternarSelecao(id: number) {
+    setSelecionados((prev) => {
+      const novo = new Set(prev)
+      if (novo.has(id)) novo.delete(id)
+      else novo.add(id)
+      return novo
+    })
+  }
+
+  function alternarSelecaoPagina() {
+    setSelecionados((prev) => {
+      const novo = new Set(prev)
+      if (todosNaPaginaSelecionados) {
+        idsNaPagina.forEach((id) => novo.delete(id))
+      } else {
+        idsNaPagina.forEach((id) => novo.add(id))
+      }
+      return novo
+    })
+  }
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -62,7 +87,7 @@ export function ListaLeads() {
     if (meusLeads && usuarioId) params.set('vendedorId', String(usuarioId))
     fetch(`/api/leads?${params}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
-      .then((d) => { setLeads(d.leads); grid.resetar() })
+      .then((d) => { setLeads(d.leads); grid.resetar(); setSelecionados(new Set()) })
       .catch(() => setErro('Não foi possível carregar os leads.'))
       .finally(() => setCarregando(false))
   }
@@ -78,6 +103,23 @@ export function ListaLeads() {
     if (!confirm(`Remover o lead "${lead.nome_empresa ?? lead.contato ?? lead.id}"? Esta ação não pode ser desfeita.`)) return
     const res = await fetch(`/api/leads/${lead.id}`, { method: 'DELETE', credentials: 'include' })
     if (res.ok) carregar()
+  }
+
+  async function removerSelecionados() {
+    const total = selecionados.size
+    if (!total) return
+    if (!confirm(`Remover ${total} lead(s) selecionado(s)? Esta ação não pode ser desfeita.`)) return
+    const res = await fetch('/api/leads', {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: Array.from(selecionados) }),
+    })
+    if (res.ok) carregar()
+    else {
+      const d = await res.json().catch(() => null)
+      alert(d?.erro ?? 'Erro ao remover leads selecionados.')
+    }
   }
 
   return (
@@ -110,6 +152,11 @@ export function ListaLeads() {
           <input type="checkbox" checked={meusLeads} onChange={(e) => setMeusLeads(e.target.checked)} />
           Meus leads
         </label>
+        {selecionados.size > 0 && (
+          <button className="botao-perigo" type="button" onClick={removerSelecionados}>
+            Excluir selecionados ({selecionados.size})
+          </button>
+        )}
       </form>
 
       {erro && <p className="alerta-erro" role="alert">{erro}</p>}
@@ -136,6 +183,14 @@ export function ListaLeads() {
                   <th {...grid.th('status')}>Status</th>
                   <th {...grid.th('criado_em')}>Recebido em</th>
                   <th>Ações</th>
+                  <th style={{ textAlign: 'center' }}>
+                    <input
+                      type="checkbox"
+                      checked={todosNaPaginaSelecionados}
+                      onChange={alternarSelecaoPagina}
+                      title="Selecionar todos desta página"
+                    />
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -176,6 +231,13 @@ export function ListaLeads() {
                           <button className="botao-perigo" type="button" onClick={() => remover(l)}>Remover</button>
                         </div>
                       </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selecionados.has(l.id)}
+                        onChange={() => alternarSelecao(l.id)}
+                      />
                     </td>
                   </tr>
                 ))}

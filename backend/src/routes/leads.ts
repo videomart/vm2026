@@ -229,6 +229,15 @@ leadsRouter.put('/:id', async (req, res) => {
   res.json({ lead: (rows as any[])[0] })
 })
 
+// Exclusão em massa — usada pela seleção via checkbox no grid de leads.
+leadsRouter.delete('/', async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Number.isInteger) : []
+  if (!ids.length) return res.status(400).json({ erro: 'Nenhum lead selecionado.' })
+
+  const [resultado] = await pool.query('DELETE FROM leads WHERE id IN (?)', [ids])
+  res.json({ ok: true, removidos: (resultado as any).affectedRows })
+})
+
 leadsRouter.delete('/:id', async (req, res) => {
   const [resultado] = await pool.query('DELETE FROM leads WHERE id = ?', [req.params.id])
   if ((resultado as any).affectedRows === 0) {
