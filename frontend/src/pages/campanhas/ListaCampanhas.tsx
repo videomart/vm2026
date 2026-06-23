@@ -76,12 +76,8 @@ export function ListaCampanhas() {
   return (
     <section>
       <div className="cabecalho-lista">
-        <h2>E-mails episódicos</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <Link to="/campanhas/grupos" className="botao-secundario">Gerenciar grupos</Link>
-          <Link to="/campanhas/templates" className="botao-secundario">Templates</Link>
-          <Link to="/campanhas/nova" className="botao">Nova campanha</Link>
-        </div>
+        <h2>Campanhas</h2>
+        <Link to="/campanhas/nova" className="botao">Nova campanha</Link>
       </div>
 
       {erro && <p className="alerta-erro" role="alert">{erro}</p>}

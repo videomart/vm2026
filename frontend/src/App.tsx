@@ -47,6 +47,7 @@ const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : 
 
 const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp']
 const ROTAS_FINANCEIRO = ['/contas-receber', '/contas-pagar', '/fornecedores', '/categorias-despesa', '/contas-financeiras', '/cotacao-dolar']
+const ROTAS_MARKETING = ['/campanhas']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -55,8 +56,10 @@ function App() {
   const location = useLocation()
   const emConfig = ROTAS_CONFIG.some((r) => location.pathname.startsWith(r))
   const emFinanceiro = ROTAS_FINANCEIRO.some((r) => location.pathname.startsWith(r))
+  const emMarketing = ROTAS_MARKETING.some((r) => location.pathname.startsWith(r))
   const [configAberto, setConfigAberto] = useState(emConfig)
   const [financeiroAberto, setFinanceiroAberto] = useState(emFinanceiro)
+  const [marketingAberto, setMarketingAberto] = useState(emMarketing)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -161,7 +164,21 @@ function App() {
             </div>
           )}
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
-          <NavLink to="/campanhas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>E-mails</NavLink>
+          <button
+            className={`menu-grupo-btn${emMarketing ? ' ativo' : ''}`}
+            type="button"
+            onClick={() => setMarketingAberto((v) => !v)}
+          >
+            <span>Marketing</span>
+            <span className="menu-grupo-seta">{marketingAberto ? '▾' : '▸'}</span>
+          </button>
+          {marketingAberto && (
+            <div className="menu-subgrupo">
+              <NavLink to="/campanhas" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Campanhas</NavLink>
+              <NavLink to="/campanhas/grupos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Grupos</NavLink>
+              <NavLink to="/campanhas/templates" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Templates</NavLink>
+            </div>
+          )}
           {usuario.papel === 'admin' && (
             <>
               <button
