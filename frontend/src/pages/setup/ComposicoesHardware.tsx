@@ -35,7 +35,7 @@ export function ComposicoesHardware() {
   }
 
   async function salvar() {
-    const nome = campos.nome.trim()
+    const nome = campos.nome.trim().toUpperCase()
     const itens = campos.itens.trim()
     if (!nome || !itens) { setErro('Nome e itens são obrigatórios.'); return }
 
