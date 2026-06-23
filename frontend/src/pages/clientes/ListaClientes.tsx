@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
+import { useBuscaDebounced } from '../../hooks/useBuscaDebounced'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarCNPJCPF, formatarTelefone, formatarData } from '../../utils/formatar'
 import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
@@ -20,6 +21,7 @@ export function ListaClientes() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(clientes, 'id', 30, 'desc')
+  const buscaDebounced = useBuscaDebounced(busca)
 
   function editarCliente(id: number) {
     salvarNavegacao('nav_clientes', grid.ordenados.map((c) => c.id))
@@ -30,7 +32,7 @@ export function ListaClientes() {
     setCarregando(true)
     setErro(null)
     const parametros = new URLSearchParams()
-    if (busca.trim()) parametros.set('q', busca.trim())
+    if (buscaDebounced.trim()) parametros.set('q', buscaDebounced.trim())
     if (mostrarInativos) parametros.set('incluirInativos', '1')
     if (categoriaId) parametros.set('categoria_cliente_id', categoriaId)
     if (apenasEmailInvalido) parametros.set('emailInvalido', '1')
@@ -48,7 +50,7 @@ export function ListaClientes() {
       .catch(() => null)
   }, [])
 
-  useEffect(() => { carregar() }, [mostrarInativos, categoriaId, apenasEmailInvalido]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [buscaDebounced, mostrarInativos, categoriaId, apenasEmailInvalido]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function inativar(cliente: Cliente) {
     if (!confirm(`Inativar o cliente "${cliente.razao_social}"?`)) return
@@ -68,14 +70,13 @@ export function ListaClientes() {
         <Link className="botao" to="/clientes/novo">+ Novo cliente</Link>
       </div>
 
-      <form className="barra-busca" onSubmit={(e) => { e.preventDefault(); carregar() }}>
+      <form className="barra-busca" onSubmit={(e) => e.preventDefault()}>
         <input
           type="search"
           placeholder="Buscar por razão social, fantasia ou CNPJ/CPF"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
-        <button className="botao-secundario" type="submit">Buscar</button>
         <select
           value={categoriaId}
           onChange={(e) => setCategoriaId(e.target.value)}

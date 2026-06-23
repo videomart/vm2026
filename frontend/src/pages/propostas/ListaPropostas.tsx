@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
+import { useBuscaDebounced } from '../../hooks/useBuscaDebounced'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarMoeda, formatarData } from '../../utils/formatar'
 import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
@@ -29,6 +30,7 @@ export function ListaPropostas() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(propostas, 'id', 30, 'desc')
+  const buscaDebounced = useBuscaDebounced(busca)
 
   function abrirProposta(p: Proposta) {
     salvarNavegacao('nav_propostas', grid.ordenados.map((x) => x.id))
@@ -40,7 +42,7 @@ export function ListaPropostas() {
     setErro(null)
     const params = new URLSearchParams()
     if (filtroStatus) params.set('status', filtroStatus)
-    if (busca.trim()) params.set('q', busca.trim())
+    if (buscaDebounced.trim()) params.set('q', buscaDebounced.trim())
     fetch(`/api/propostas?${params}`, { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(r)))
       .then((d) => { setPropostas(d.propostas); grid.resetar() })
@@ -48,7 +50,7 @@ export function ListaPropostas() {
       .finally(() => setCarregando(false))
   }
 
-  useEffect(() => { carregar() }, [filtroStatus]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [buscaDebounced, filtroStatus]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function excluir(p: Proposta) {
     if (!confirm(`Excluir definitivamente a proposta #${p.id} (${p.cliente_nome})? Esta ação não pode ser desfeita.`)) return
@@ -68,14 +70,13 @@ export function ListaPropostas() {
         <Link className="botao" to="/propostas/nova">+ Nova proposta</Link>
       </div>
 
-      <form className="barra-busca" onSubmit={(e) => { e.preventDefault(); carregar() }}>
+      <form className="barra-busca" onSubmit={(e) => e.preventDefault()}>
         <input
           type="search"
           placeholder="Buscar por cliente"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
-        <button className="botao-secundario" type="submit">Buscar</button>
         <select
           value={filtroStatus}
           onChange={(e) => setFiltroStatus(e.target.value as StatusProposta | '')}

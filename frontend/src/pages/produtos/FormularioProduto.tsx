@@ -158,6 +158,15 @@ export function FormularioProduto() {
     setCampos((prev) => ({ ...prev, descricao: valor }))
   }
 
+  /** Ao sair do campo, normaliza para 2 casas decimais (ex.: "99" -> "99.00") */
+  function formatarAoSair(campo: 'preco_custo' | 'preco_usd' | 'preco_venda') {
+    setCampos((prev) => {
+      const numero = Number(prev[campo])
+      if (!prev[campo] || Number.isNaN(numero)) return prev
+      return { ...prev, [campo]: numero.toFixed(2) }
+    })
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setErro(null)
@@ -347,6 +356,7 @@ export function FormularioProduto() {
                 step="0.01"
                 value={campos.preco_usd}
                 onChange={(e) => atualizar('preco_usd', e.target.value)}
+                onBlur={() => formatarAoSair('preco_usd')}
               />
             </div>
           ) : (
@@ -359,6 +369,7 @@ export function FormularioProduto() {
                 step="0.01"
                 value={campos.preco_custo}
                 onChange={(e) => atualizar('preco_custo', e.target.value)}
+                onBlur={() => formatarAoSair('preco_custo')}
               />
             </div>
           )}
@@ -371,6 +382,7 @@ export function FormularioProduto() {
               step="0.01"
               value={campos.preco_venda}
               onChange={(e) => atualizar('preco_venda', e.target.value)}
+              onBlur={() => formatarAoSair('preco_venda')}
             />
             {campos.moeda === 'USD' && precoSugerido !== null && (
               <span style={{ fontSize: '12px', color: 'var(--text)' }}>

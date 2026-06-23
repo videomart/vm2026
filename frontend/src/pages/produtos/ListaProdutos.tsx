@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useGrid } from '../../hooks/useGrid'
+import { useBuscaDebounced } from '../../hooks/useBuscaDebounced'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarMoeda } from '../../utils/formatar'
 import { salvarNavegacao } from '../../hooks/useNavegacaoRegistro'
@@ -15,6 +16,7 @@ export function ListaProdutos() {
   const [erro, setErro] = useState<string | null>(null)
 
   const grid = useGrid(produtos, 'modelo')
+  const buscaDebounced = useBuscaDebounced(busca)
 
   function editarProduto(id: number) {
     salvarNavegacao('nav_produtos', grid.ordenados.map((p) => p.id))
@@ -25,7 +27,7 @@ export function ListaProdutos() {
     setCarregando(true)
     setErro(null)
     const parametros = new URLSearchParams()
-    if (busca.trim()) parametros.set('q', busca.trim())
+    if (buscaDebounced.trim()) parametros.set('q', buscaDebounced.trim())
     if (mostrarInativos) parametros.set('incluirInativos', '1')
     fetch(`/api/produtos?${parametros.toString()}`, { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.reject(res)))
@@ -34,7 +36,7 @@ export function ListaProdutos() {
       .finally(() => setCarregando(false))
   }
 
-  useEffect(() => { carregar() }, [mostrarInativos]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { carregar() }, [buscaDebounced, mostrarInativos]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function inativar(produto: Produto) {
     if (!confirm(`Inativar o produto "${produto.modelo}"?`)) return
@@ -54,14 +56,13 @@ export function ListaProdutos() {
         <Link className="botao" to="/produtos/novo">+ Novo produto</Link>
       </div>
 
-      <form className="barra-busca" onSubmit={(e) => { e.preventDefault(); carregar() }}>
+      <form className="barra-busca" onSubmit={(e) => e.preventDefault()}>
         <input
           type="search"
           placeholder="Buscar por modelo, descrição, marca ou categoria"
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
         />
-        <button className="botao-secundario" type="submit">Buscar</button>
         <label className="opcao-checkbox">
           <input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />
           Mostrar inativos
