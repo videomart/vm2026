@@ -73,7 +73,7 @@ export function ListaPropostas() {
       <form className="barra-busca" onSubmit={(e) => e.preventDefault()}>
         <input
           type="search"
-          placeholder="Buscar por cliente"
+          placeholder="Buscar por nº, cliente ou contato"
           value={busca}
           onChange={(e) => setBusca(e.target.value.toUpperCase())}
         />

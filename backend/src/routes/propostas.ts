@@ -73,8 +73,18 @@ propostasRouter.get('/', async (req, res) => {
     if (status) { filtros.push('p.status = ?'); params.push(status) }
     if (clienteId) { filtros.push('p.cliente_id = ?'); params.push(Number(clienteId)) }
     if (q?.trim()) {
-      filtros.push('(c.razao_social LIKE ? OR c.nome_fantasia LIKE ?)')
-      params.push(`%${q.trim()}%`, `%${q.trim()}%`)
+      const termo = q.trim()
+      const termoNumerico = termo.replace(/^#/, '')
+      filtros.push(`(
+        c.razao_social LIKE ? OR c.nome_fantasia LIKE ?
+        OR EXISTS (
+          SELECT 1 FROM contatos ct
+          WHERE ct.cliente_id = c.id AND ct.ativo = 1 AND (ct.nome LIKE ? OR ct.email LIKE ?)
+        )
+        OR p.id = ?
+      )`)
+      const like = `%${termo}%`
+      params.push(like, like, like, like, Number(termoNumerico) || 0)
     }
     if (filtros.length) sql += ' WHERE ' + filtros.join(' AND ')
     sql += ' ORDER BY p.criado_em DESC'
