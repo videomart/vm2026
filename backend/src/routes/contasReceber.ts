@@ -20,6 +20,15 @@ const FIM_PERIODO: Record<Periodo, string> = {
   ano: "DATE_FORMAT(CURDATE(), '%Y-12-31')",
 }
 
+// Recebimentos podem estar em moeda diferente da conta — converte pela cotação
+// informada no momento do pagamento antes de somar ao total recebido.
+const SQL_VALOR_RECEBIDO_CONVERTIDO = `
+  COALESCE((
+    SELECT SUM(IF(r.moeda = cr.moeda, r.valor, r.valor / r.cotacao))
+    FROM recebimentos r WHERE r.conta_id = cr.id
+  ), 0)
+`
+
 // ─── Relatório (resumo por status + lista detalhada no período) ────────────────
 
 contasReceberRouter.get('/relatorio', async (req, res) => {
@@ -37,7 +46,7 @@ contasReceberRouter.get('/relatorio', async (req, res) => {
 
     const [porStatus] = await pool.query(`
       SELECT cr.status, COUNT(*) AS total, COALESCE(SUM(cr.valor), 0) AS valor_total,
-             COALESCE(SUM((SELECT SUM(r.valor) FROM recebimentos r WHERE r.conta_id = cr.id)), 0) AS valor_recebido
+             COALESCE(SUM(${SQL_VALOR_RECEBIDO_CONVERTIDO}), 0) AS valor_recebido
       FROM contas_a_receber cr
       WHERE cr.vencimento BETWEEN ${inicio} AND ${fim}
       GROUP BY cr.status
@@ -62,11 +71,10 @@ contasReceberRouter.get('/relatorio', async (req, res) => {
              cr.origem_tipo, cr.numero_parcela, cr.total_parcelas,
              c.razao_social AS cliente_nome,
              u.nome AS vendedor_nome,
-             COALESCE((SELECT SUM(r.valor) FROM recebimentos r WHERE r.conta_id = cr.id), 0) AS total_recebido
+             ${SQL_VALOR_RECEBIDO_CONVERTIDO} AS total_recebido
       FROM contas_a_receber cr
       LEFT JOIN vendas v ON v.id = cr.venda_id
-      LEFT JOIN assinaturas a ON a.id = cr.assinatura_id
-      JOIN clientes c ON c.id = COALESCE(v.cliente_id, a.cliente_id)
+      JOIN clientes c ON c.id = cr.cliente_id
       LEFT JOIN usuarios u ON u.id = v.vendedor_id
       WHERE cr.vencimento BETWEEN ${inicio} AND ${fim}
       ORDER BY cr.vencimento ASC
@@ -81,7 +89,7 @@ contasReceberRouter.get('/relatorio', async (req, res) => {
 async function recalcularStatus(contaId: number) {
   const [rows] = await pool.query(
     `SELECT cr.valor, cr.vencimento, cr.status,
-            COALESCE((SELECT SUM(r.valor) FROM recebimentos r WHERE r.conta_id = cr.id), 0) AS total_recebido
+            ${SQL_VALOR_RECEBIDO_CONVERTIDO} AS total_recebido
      FROM contas_a_receber cr WHERE cr.id = ?`,
     [contaId],
   ) as any[]
@@ -110,6 +118,126 @@ async function recalcularStatus(contaId: number) {
   }
 }
 
+// Lançamento manual (sem venda/assinatura associada) — ex.: recebimento avulso
+contasReceberRouter.post('/', async (req, res) => {
+  try {
+    const { cliente_id, descricao, valor, moeda, vencimento, parcelas } = req.body
+    if (!cliente_id) return res.status(400).json({ erro: 'Selecione o cliente.' })
+    if (!valor || Number(valor) <= 0) return res.status(400).json({ erro: 'Informe um valor válido.' })
+    if (!vencimento) return res.status(400).json({ erro: 'Informe o vencimento da primeira parcela.' })
+
+    const totalParcelas = Math.max(1, Number(parcelas) || 1)
+    const valorParcela = Number((Number(valor) / totalParcelas).toFixed(2))
+
+    const conn = await pool.getConnection()
+    try {
+      await conn.beginTransaction()
+      const idsCriados: number[] = []
+      for (let i = 0; i < totalParcelas; i++) {
+        const dataVencimento = new Date(vencimento + 'T12:00:00')
+        dataVencimento.setMonth(dataVencimento.getMonth() + i)
+        const [r] = await conn.query(
+          `INSERT INTO contas_a_receber
+             (origem_tipo, cliente_id, numero_parcela, total_parcelas, descricao, valor, moeda, vencimento)
+           VALUES ('manual', ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            Number(cliente_id), i + 1, totalParcelas, descricao?.trim() || null,
+            valorParcela, (moeda || 'BRL').toUpperCase(), dataVencimento.toISOString().slice(0, 10),
+          ],
+        ) as any[]
+        idsCriados.push(r.insertId)
+      }
+      await conn.commit()
+      res.status(201).json({ ok: true, ids: idsCriados })
+    } catch (e) {
+      await conn.rollback()
+      throw e
+    } finally {
+      conn.release()
+    }
+  } catch {
+    res.status(500).json({ erro: 'Erro ao lançar conta a receber.' })
+  }
+})
+
+// Edição: só permitida se a conta ainda não tiver nenhum recebimento (senão os
+// valores já baixados ficariam dissociados do valor/vencimento exibido).
+contasReceberRouter.put('/:id', async (req, res) => {
+  try {
+    const [contaRows] = await pool.query(
+      `SELECT cr.status, cr.origem_tipo,
+              ${SQL_VALOR_RECEBIDO_CONVERTIDO} AS total_recebido
+       FROM contas_a_receber cr WHERE cr.id = ?`,
+      [req.params.id],
+    ) as any[]
+    const conta = contaRows[0]
+    if (!conta) return res.status(404).json({ erro: 'Conta não encontrada.' })
+    if (Number(conta.total_recebido) > 0) {
+      return res.status(409).json({ erro: 'Esta conta já possui recebimentos e não pode ser editada. Reabra-a primeiro.' })
+    }
+
+    const { cliente_id, descricao, valor, moeda, vencimento } = req.body
+    if (!valor || Number(valor) <= 0) return res.status(400).json({ erro: 'Informe um valor válido.' })
+    if (!vencimento) return res.status(400).json({ erro: 'Informe o vencimento.' })
+
+    if (conta.origem_tipo === 'manual') {
+      if (!cliente_id) return res.status(400).json({ erro: 'Selecione o cliente.' })
+      await pool.query(
+        `UPDATE contas_a_receber SET cliente_id = ?, descricao = ?, valor = ?, moeda = ?, vencimento = ? WHERE id = ?`,
+        [Number(cliente_id), descricao?.trim() || null, Number(valor), (moeda || 'BRL').toUpperCase(), vencimento, req.params.id],
+      )
+    } else {
+      // venda/assinatura: cliente vem da origem, não é editável aqui
+      await pool.query(
+        `UPDATE contas_a_receber SET descricao = ?, valor = ?, moeda = ?, vencimento = ? WHERE id = ?`,
+        [descricao?.trim() || null, Number(valor), (moeda || 'BRL').toUpperCase(), vencimento, req.params.id],
+      )
+    }
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao salvar conta a receber.' })
+  }
+})
+
+// Exclusão: só permitida se a conta ainda não tiver recebimento algum (nem
+// parcial). Se vier de uma venda, reverte a venda (volta a proposta para aberta).
+contasReceberRouter.delete('/:id', async (req, res) => {
+  try {
+    const [contaRows] = await pool.query(
+      `SELECT cr.venda_id, ${SQL_VALOR_RECEBIDO_CONVERTIDO} AS total_recebido
+       FROM contas_a_receber cr WHERE cr.id = ?`,
+      [req.params.id],
+    ) as any[]
+    const conta = contaRows[0]
+    if (!conta) return res.status(404).json({ erro: 'Conta não encontrada.' })
+    if (Number(conta.total_recebido) > 0) {
+      return res.status(409).json({ erro: 'Esta conta já possui recebimentos e não pode ser excluída. Reabra-a primeiro.' })
+    }
+
+    const conn = await pool.getConnection()
+    try {
+      await conn.beginTransaction()
+      await conn.query('DELETE FROM contas_a_receber WHERE id = ?', [req.params.id])
+      if (conta.venda_id) {
+        const [vendaRows] = await conn.query('SELECT proposta_id FROM vendas WHERE id = ?', [conta.venda_id]) as any[]
+        await conn.query('DELETE FROM vendas WHERE id = ?', [conta.venda_id])
+        if (vendaRows[0]?.proposta_id) {
+          await conn.query(`UPDATE propostas SET status = 'aberta' WHERE id = ?`, [vendaRows[0].proposta_id])
+        }
+      }
+      await conn.commit()
+      res.status(204).end()
+    } catch (e) {
+      await conn.rollback()
+      throw e
+    } finally {
+      conn.release()
+    }
+  } catch {
+    res.status(500).json({ erro: 'Erro ao excluir conta a receber.' })
+  }
+})
+
 contasReceberRouter.get('/', async (req, res) => {
   try {
     const { status, q } = req.query as Record<string, string>
@@ -131,17 +259,17 @@ contasReceberRouter.get('/', async (req, res) => {
     const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : ''
 
     const [rows] = await pool.query(`
-      SELECT cr.id, cr.descricao, cr.valor, cr.vencimento, cr.status, cr.pago_em, cr.criado_em,
+      SELECT cr.id, cr.descricao, cr.valor, cr.moeda, cr.vencimento, cr.status, cr.pago_em, cr.criado_em,
              cr.origem_tipo, cr.numero_parcela, cr.total_parcelas,
              cr.venda_id, v.proposta_id,
              cr.assinatura_id, a.descricao AS assinatura_descricao,
              c.id AS cliente_id, c.razao_social AS cliente_nome,
              u.nome AS vendedor_nome,
-             COALESCE((SELECT SUM(r.valor) FROM recebimentos r WHERE r.conta_id = cr.id), 0) AS total_recebido
+             ${SQL_VALOR_RECEBIDO_CONVERTIDO} AS total_recebido
       FROM contas_a_receber cr
       LEFT JOIN vendas v ON v.id = cr.venda_id
       LEFT JOIN assinaturas a ON a.id = cr.assinatura_id
-      JOIN clientes c ON c.id = COALESCE(v.cliente_id, a.cliente_id)
+      JOIN clientes c ON c.id = cr.cliente_id
       LEFT JOIN usuarios u ON u.id = v.vendedor_id
       ${where}
       ORDER BY cr.vencimento ASC
@@ -224,9 +352,9 @@ contasReceberRouter.post('/assinaturas/gerar-mes', async (_req, res) => {
       const vencimento = `${new Date().toISOString().slice(0, 7)}-${String(dia).padStart(2, '0')}`
 
       await pool.query(
-        `INSERT INTO contas_a_receber (origem_tipo, assinatura_id, descricao, valor, vencimento)
-         VALUES ('assinatura', ?, ?, ?, ?)`,
-        [a.id, a.descricao, a.valor_mensal, vencimento],
+        `INSERT INTO contas_a_receber (origem_tipo, assinatura_id, cliente_id, descricao, valor, vencimento)
+         VALUES ('assinatura', ?, ?, ?, ?, ?)`,
+        [a.id, a.cliente_id, a.descricao, a.valor_mensal, vencimento],
       )
       geradas++
     }
@@ -242,8 +370,11 @@ contasReceberRouter.post('/assinaturas/gerar-mes', async (_req, res) => {
 contasReceberRouter.get('/:id/recebimentos', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, valor, data_pagamento, forma_pagamento, observacao, criado_em
-       FROM recebimentos WHERE conta_id = ? ORDER BY data_pagamento DESC`,
+      `SELECT r.id, r.valor, r.moeda, r.cotacao, r.data_pagamento, r.forma_pagamento, r.observacao, r.criado_em,
+              r.conta_financeira_id, cf.nome AS conta_financeira_nome
+       FROM recebimentos r
+       LEFT JOIN contas_financeiras cf ON cf.id = r.conta_financeira_id
+       WHERE r.conta_id = ? ORDER BY r.data_pagamento DESC`,
       [req.params.id],
     )
     res.json({ recebimentos: rows })
@@ -254,26 +385,37 @@ contasReceberRouter.get('/:id/recebimentos', async (req, res) => {
 
 contasReceberRouter.post('/:id/recebimentos', async (req, res) => {
   try {
-    const { valor, data_pagamento, forma_pagamento, observacao } = req.body
+    const { valor, moeda, cotacao, data_pagamento, forma_pagamento, conta_financeira_id, observacao } = req.body
     if (!valor || Number(valor) <= 0) return res.status(400).json({ erro: 'Informe um valor válido.' })
     if (!data_pagamento) return res.status(400).json({ erro: 'Informe a data do pagamento.' })
 
-    const [contaRows] = await pool.query('SELECT valor FROM contas_a_receber WHERE id = ?', [req.params.id]) as any[]
+    const [contaRows] = await pool.query('SELECT valor, moeda FROM contas_a_receber WHERE id = ?', [req.params.id]) as any[]
     if (!contaRows[0]) return res.status(404).json({ erro: 'Conta não encontrada.' })
 
+    const moedaConta = contaRows[0].moeda
+    const moedaPagamento = (moeda || moedaConta).toUpperCase()
+    if (moedaPagamento !== moedaConta && !(Number(cotacao) > 0)) {
+      return res.status(400).json({ erro: `Informe a cotação para converter de ${moedaPagamento} para ${moedaConta}.` })
+    }
+    const valorConvertido = moedaPagamento === moedaConta ? Number(valor) : Number(valor) / Number(cotacao)
+
     const [jaRecebidoRows] = await pool.query(
-      'SELECT COALESCE(SUM(valor), 0) AS total FROM recebimentos WHERE conta_id = ?',
-      [req.params.id],
+      `SELECT COALESCE(SUM(IF(moeda = ?, valor, valor / cotacao)), 0) AS total FROM recebimentos WHERE conta_id = ?`,
+      [moedaConta, req.params.id],
     ) as any[]
     const saldoRestante = Number(contaRows[0].valor) - Number(jaRecebidoRows[0].total)
-    if (Number(valor) > saldoRestante + 0.01) {
-      return res.status(400).json({ erro: `Valor maior que o saldo restante (${saldoRestante.toFixed(2)}).` })
+    if (valorConvertido > saldoRestante + 0.01) {
+      return res.status(400).json({ erro: `Valor maior que o saldo restante (${saldoRestante.toFixed(2)} ${moedaConta}).` })
     }
 
     await pool.query(
-      `INSERT INTO recebimentos (conta_id, valor, data_pagamento, forma_pagamento, observacao)
-       VALUES (?, ?, ?, ?, ?)`,
-      [req.params.id, Number(valor), data_pagamento, forma_pagamento?.trim() || null, observacao?.trim() || null],
+      `INSERT INTO recebimentos (conta_id, valor, moeda, cotacao, data_pagamento, forma_pagamento, conta_financeira_id, observacao)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.params.id, Number(valor), moedaPagamento, moedaPagamento !== moedaConta ? Number(cotacao) : null,
+        data_pagamento, forma_pagamento?.trim() || null, conta_financeira_id ? Number(conta_financeira_id) : null,
+        observacao?.trim() || null,
+      ],
     )
     await recalcularStatus(Number(req.params.id))
 
@@ -299,19 +441,20 @@ contasReceberRouter.delete('/:id/recebimentos/:recebimentoId', async (req, res) 
 // Atalho: marcar conta inteira como paga de uma vez (cria recebimento do saldo total)
 contasReceberRouter.put('/:id/pagar', async (req, res) => {
   try {
-    const [contaRows] = await pool.query('SELECT valor FROM contas_a_receber WHERE id = ?', [req.params.id]) as any[]
+    const { conta_financeira_id } = req.body as { conta_financeira_id?: number }
+    const [contaRows] = await pool.query('SELECT valor, moeda FROM contas_a_receber WHERE id = ?', [req.params.id]) as any[]
     if (!contaRows[0]) return res.status(404).json({ erro: 'Conta não encontrada.' })
 
     const [jaRecebidoRows] = await pool.query(
-      'SELECT COALESCE(SUM(valor), 0) AS total FROM recebimentos WHERE conta_id = ?',
-      [req.params.id],
+      `SELECT COALESCE(SUM(IF(moeda = ?, valor, valor / cotacao)), 0) AS total FROM recebimentos WHERE conta_id = ?`,
+      [contaRows[0].moeda, req.params.id],
     ) as any[]
     const saldoRestante = Number(contaRows[0].valor) - Number(jaRecebidoRows[0].total)
 
     if (saldoRestante > 0.01) {
       await pool.query(
-        `INSERT INTO recebimentos (conta_id, valor, data_pagamento) VALUES (?, ?, CURDATE())`,
-        [req.params.id, saldoRestante],
+        `INSERT INTO recebimentos (conta_id, valor, moeda, data_pagamento, conta_financeira_id) VALUES (?, ?, ?, CURDATE(), ?)`,
+        [req.params.id, saldoRestante, contaRows[0].moeda, conta_financeira_id ? Number(conta_financeira_id) : null],
       )
     }
     await recalcularStatus(Number(req.params.id))

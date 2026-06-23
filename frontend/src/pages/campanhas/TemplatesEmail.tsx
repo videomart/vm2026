@@ -127,13 +127,15 @@ export function TemplatesEmail() {
 
         {/* Formulário */}
         <div>
-          <div className="campo">
-            <label>Nome do template</label>
-            <input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex.: Aviso de atualização TVPlay" />
-          </div>
-          <div className="campo">
-            <label>Assunto padrão</label>
-            <input className="sem-uppercase" value={form.assunto} onChange={(e) => setForm((f) => ({ ...f, assunto: e.target.value }))} placeholder="Assunto do e-mail" />
+          <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr' }}>
+            <div className="campo">
+              <label>Nome do template</label>
+              <input value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex.: Aviso de atualização TVPlay" />
+            </div>
+            <div className="campo">
+              <label>Assunto padrão</label>
+              <input className="sem-uppercase" value={form.assunto} onChange={(e) => setForm((f) => ({ ...f, assunto: e.target.value }))} placeholder="Assunto do e-mail" />
+            </div>
           </div>
           <div className="campo">
             <label>Corpo</label>

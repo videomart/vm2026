@@ -20,6 +20,15 @@ const FIM_PERIODO: Record<Periodo, string> = {
   ano: "DATE_FORMAT(CURDATE(), '%Y-12-31')",
 }
 
+// Pagamentos podem estar em moeda diferente da conta — converte pela cotação
+// informada no momento do pagamento antes de somar ao total pago.
+const SQL_VALOR_PAGO_CONVERTIDO = `
+  COALESCE((
+    SELECT SUM(IF(p.moeda = cp.moeda, p.valor, p.valor / p.cotacao))
+    FROM pagamentos p WHERE p.conta_id = cp.id
+  ), 0)
+`
+
 // ─── Relatório (resumo por status + lista detalhada no período) ────────────────
 
 contasPagarRouter.get('/relatorio', async (req, res) => {
@@ -37,7 +46,7 @@ contasPagarRouter.get('/relatorio', async (req, res) => {
 
     const [porStatus] = await pool.query(`
       SELECT cp.status, COUNT(*) AS total, COALESCE(SUM(cp.valor), 0) AS valor_total,
-             COALESCE(SUM((SELECT SUM(p.valor) FROM pagamentos p WHERE p.conta_id = cp.id)), 0) AS valor_pago
+             COALESCE(SUM(${SQL_VALOR_PAGO_CONVERTIDO}), 0) AS valor_pago
       FROM contas_a_pagar cp
       WHERE cp.vencimento BETWEEN ${inicio} AND ${fim}
       GROUP BY cp.status
@@ -62,7 +71,7 @@ contasPagarRouter.get('/relatorio', async (req, res) => {
              cp.origem_tipo, cp.numero_parcela, cp.total_parcelas,
              f.razao_social AS fornecedor_nome,
              cd.nome AS categoria_despesa_nome,
-             COALESCE((SELECT SUM(p.valor) FROM pagamentos p WHERE p.conta_id = cp.id), 0) AS total_pago
+             ${SQL_VALOR_PAGO_CONVERTIDO} AS total_pago
       FROM contas_a_pagar cp
       JOIN fornecedores f ON f.id = cp.fornecedor_id
       LEFT JOIN categorias_despesa cd ON cd.id = cp.categoria_despesa_id
@@ -79,7 +88,7 @@ contasPagarRouter.get('/relatorio', async (req, res) => {
 async function recalcularStatus(contaId: number) {
   const [rows] = await pool.query(
     `SELECT cp.valor, cp.vencimento, cp.status,
-            COALESCE((SELECT SUM(p.valor) FROM pagamentos p WHERE p.conta_id = cp.id), 0) AS total_pago
+            ${SQL_VALOR_PAGO_CONVERTIDO} AS total_pago
      FROM contas_a_pagar cp WHERE cp.id = ?`,
     [contaId],
   ) as any[]
@@ -129,12 +138,12 @@ contasPagarRouter.get('/', async (req, res) => {
     const where = filtros.length ? `WHERE ${filtros.join(' AND ')}` : ''
 
     const [rows] = await pool.query(`
-      SELECT cp.id, cp.descricao, cp.valor, cp.vencimento, cp.status, cp.pago_em, cp.criado_em,
+      SELECT cp.id, cp.descricao, cp.valor, cp.moeda, cp.vencimento, cp.status, cp.pago_em, cp.criado_em,
              cp.origem_tipo, cp.numero_parcela, cp.total_parcelas,
              cp.despesa_recorrente_id, dr.descricao AS despesa_recorrente_descricao,
              f.id AS fornecedor_id, f.razao_social AS fornecedor_nome,
              cd.id AS categoria_despesa_id, cd.nome AS categoria_despesa_nome,
-             COALESCE((SELECT SUM(p.valor) FROM pagamentos p WHERE p.conta_id = cp.id), 0) AS total_pago
+             ${SQL_VALOR_PAGO_CONVERTIDO} AS total_pago
       FROM contas_a_pagar cp
       JOIN fornecedores f ON f.id = cp.fornecedor_id
       LEFT JOIN categorias_despesa cd ON cd.id = cp.categoria_despesa_id
@@ -152,7 +161,7 @@ contasPagarRouter.get('/', async (req, res) => {
 // Lançamento avulso (com ou sem parcelamento)
 contasPagarRouter.post('/', async (req, res) => {
   try {
-    const { fornecedor_id, categoria_despesa_id, descricao, valor, vencimento, parcelas } = req.body
+    const { fornecedor_id, categoria_despesa_id, descricao, valor, moeda, vencimento, parcelas } = req.body
     if (!fornecedor_id) return res.status(400).json({ erro: 'Selecione o fornecedor.' })
     if (!valor || Number(valor) <= 0) return res.status(400).json({ erro: 'Informe um valor válido.' })
     if (!vencimento) return res.status(400).json({ erro: 'Informe o vencimento da primeira parcela.' })
@@ -169,12 +178,12 @@ contasPagarRouter.post('/', async (req, res) => {
         dataVencimento.setMonth(dataVencimento.getMonth() + i)
         const [r] = await conn.query(
           `INSERT INTO contas_a_pagar
-             (fornecedor_id, categoria_despesa_id, origem_tipo, numero_parcela, total_parcelas, descricao, valor, vencimento)
-           VALUES (?, ?, 'avulsa', ?, ?, ?, ?, ?)`,
+             (fornecedor_id, categoria_despesa_id, origem_tipo, numero_parcela, total_parcelas, descricao, valor, moeda, vencimento)
+           VALUES (?, ?, 'avulsa', ?, ?, ?, ?, ?, ?)`,
           [
             Number(fornecedor_id), categoria_despesa_id ? Number(categoria_despesa_id) : null,
             i + 1, totalParcelas, descricao?.trim() || null, valorParcela,
-            dataVencimento.toISOString().slice(0, 10),
+            (moeda || 'BRL').toUpperCase(), dataVencimento.toISOString().slice(0, 10),
           ],
         ) as any[]
         idsCriados.push(r.insertId)
@@ -192,8 +201,52 @@ contasPagarRouter.post('/', async (req, res) => {
   }
 })
 
+// Edição: só permitida se a conta ainda não tiver nenhum pagamento (senão os
+// valores já baixados ficariam dissociados do valor/vencimento exibido).
+contasPagarRouter.put('/:id', async (req, res) => {
+  try {
+    const [contaRows] = await pool.query(
+      `SELECT ${SQL_VALOR_PAGO_CONVERTIDO} AS total_pago FROM contas_a_pagar cp WHERE cp.id = ?`,
+      [req.params.id],
+    ) as any[]
+    const conta = contaRows[0]
+    if (!conta) return res.status(404).json({ erro: 'Conta não encontrada.' })
+    if (Number(conta.total_pago) > 0) {
+      return res.status(409).json({ erro: 'Esta conta já possui pagamentos e não pode ser editada. Reabra-a primeiro.' })
+    }
+
+    const { fornecedor_id, categoria_despesa_id, descricao, valor, moeda, vencimento } = req.body
+    if (!fornecedor_id) return res.status(400).json({ erro: 'Selecione o fornecedor.' })
+    if (!valor || Number(valor) <= 0) return res.status(400).json({ erro: 'Informe um valor válido.' })
+    if (!vencimento) return res.status(400).json({ erro: 'Informe o vencimento.' })
+
+    await pool.query(
+      `UPDATE contas_a_pagar
+       SET fornecedor_id = ?, categoria_despesa_id = ?, descricao = ?, valor = ?, moeda = ?, vencimento = ?
+       WHERE id = ?`,
+      [
+        Number(fornecedor_id), categoria_despesa_id ? Number(categoria_despesa_id) : null,
+        descricao?.trim() || null, Number(valor), (moeda || 'BRL').toUpperCase(), vencimento, req.params.id,
+      ],
+    )
+    res.json({ ok: true })
+  } catch {
+    res.status(500).json({ erro: 'Erro ao salvar conta a pagar.' })
+  }
+})
+
+// Exclusão: só permitida se a conta ainda não tiver pagamento algum (nem parcial).
 contasPagarRouter.delete('/:id', async (req, res) => {
   try {
+    const [contaRows] = await pool.query(
+      `SELECT ${SQL_VALOR_PAGO_CONVERTIDO} AS total_pago FROM contas_a_pagar cp WHERE cp.id = ?`,
+      [req.params.id],
+    ) as any[]
+    if (!contaRows[0]) return res.status(404).json({ erro: 'Conta não encontrada.' })
+    if (Number(contaRows[0].total_pago) > 0) {
+      return res.status(409).json({ erro: 'Esta conta já possui pagamentos e não pode ser excluída. Reabra-a primeiro.' })
+    }
+
     const [resultado] = await pool.query('DELETE FROM contas_a_pagar WHERE id = ?', [req.params.id]) as any[]
     if (resultado.affectedRows === 0) return res.status(404).json({ erro: 'Conta não encontrada.' })
     res.status(204).end()
@@ -297,8 +350,11 @@ contasPagarRouter.post('/recorrentes/gerar-mes', async (_req, res) => {
 contasPagarRouter.get('/:id/pagamentos', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      `SELECT id, valor, data_pagamento, forma_pagamento, observacao, criado_em
-       FROM pagamentos WHERE conta_id = ? ORDER BY data_pagamento DESC`,
+      `SELECT p.id, p.valor, p.moeda, p.cotacao, p.data_pagamento, p.forma_pagamento, p.observacao, p.criado_em,
+              p.conta_financeira_id, cf.nome AS conta_financeira_nome
+       FROM pagamentos p
+       LEFT JOIN contas_financeiras cf ON cf.id = p.conta_financeira_id
+       WHERE p.conta_id = ? ORDER BY p.data_pagamento DESC`,
       [req.params.id],
     )
     res.json({ pagamentos: rows })
@@ -309,26 +365,37 @@ contasPagarRouter.get('/:id/pagamentos', async (req, res) => {
 
 contasPagarRouter.post('/:id/pagamentos', async (req, res) => {
   try {
-    const { valor, data_pagamento, forma_pagamento, observacao } = req.body
+    const { valor, moeda, cotacao, data_pagamento, forma_pagamento, conta_financeira_id, observacao } = req.body
     if (!valor || Number(valor) <= 0) return res.status(400).json({ erro: 'Informe um valor válido.' })
     if (!data_pagamento) return res.status(400).json({ erro: 'Informe a data do pagamento.' })
 
-    const [contaRows] = await pool.query('SELECT valor FROM contas_a_pagar WHERE id = ?', [req.params.id]) as any[]
+    const [contaRows] = await pool.query('SELECT valor, moeda FROM contas_a_pagar WHERE id = ?', [req.params.id]) as any[]
     if (!contaRows[0]) return res.status(404).json({ erro: 'Conta não encontrada.' })
 
+    const moedaConta = contaRows[0].moeda
+    const moedaPagamento = (moeda || moedaConta).toUpperCase()
+    if (moedaPagamento !== moedaConta && !(Number(cotacao) > 0)) {
+      return res.status(400).json({ erro: `Informe a cotação para converter de ${moedaPagamento} para ${moedaConta}.` })
+    }
+    const valorConvertido = moedaPagamento === moedaConta ? Number(valor) : Number(valor) / Number(cotacao)
+
     const [jaPagoRows] = await pool.query(
-      'SELECT COALESCE(SUM(valor), 0) AS total FROM pagamentos WHERE conta_id = ?',
-      [req.params.id],
+      `SELECT COALESCE(SUM(IF(moeda = ?, valor, valor / cotacao)), 0) AS total FROM pagamentos WHERE conta_id = ?`,
+      [moedaConta, req.params.id],
     ) as any[]
     const saldoRestante = Number(contaRows[0].valor) - Number(jaPagoRows[0].total)
-    if (Number(valor) > saldoRestante + 0.01) {
-      return res.status(400).json({ erro: `Valor maior que o saldo restante (${saldoRestante.toFixed(2)}).` })
+    if (valorConvertido > saldoRestante + 0.01) {
+      return res.status(400).json({ erro: `Valor maior que o saldo restante (${saldoRestante.toFixed(2)} ${moedaConta}).` })
     }
 
     await pool.query(
-      `INSERT INTO pagamentos (conta_id, valor, data_pagamento, forma_pagamento, observacao)
-       VALUES (?, ?, ?, ?, ?)`,
-      [req.params.id, Number(valor), data_pagamento, forma_pagamento?.trim() || null, observacao?.trim() || null],
+      `INSERT INTO pagamentos (conta_id, valor, moeda, cotacao, data_pagamento, forma_pagamento, conta_financeira_id, observacao)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        req.params.id, Number(valor), moedaPagamento, moedaPagamento !== moedaConta ? Number(cotacao) : null,
+        data_pagamento, forma_pagamento?.trim() || null, conta_financeira_id ? Number(conta_financeira_id) : null,
+        observacao?.trim() || null,
+      ],
     )
     await recalcularStatus(Number(req.params.id))
 
@@ -354,19 +421,20 @@ contasPagarRouter.delete('/:id/pagamentos/:pagamentoId', async (req, res) => {
 // Atalho: marcar conta inteira como paga de uma vez (cria pagamento do saldo total)
 contasPagarRouter.put('/:id/pagar', async (req, res) => {
   try {
-    const [contaRows] = await pool.query('SELECT valor FROM contas_a_pagar WHERE id = ?', [req.params.id]) as any[]
+    const { conta_financeira_id } = req.body as { conta_financeira_id?: number }
+    const [contaRows] = await pool.query('SELECT valor, moeda FROM contas_a_pagar WHERE id = ?', [req.params.id]) as any[]
     if (!contaRows[0]) return res.status(404).json({ erro: 'Conta não encontrada.' })
 
     const [jaPagoRows] = await pool.query(
-      'SELECT COALESCE(SUM(valor), 0) AS total FROM pagamentos WHERE conta_id = ?',
-      [req.params.id],
+      `SELECT COALESCE(SUM(IF(moeda = ?, valor, valor / cotacao)), 0) AS total FROM pagamentos WHERE conta_id = ?`,
+      [contaRows[0].moeda, req.params.id],
     ) as any[]
     const saldoRestante = Number(contaRows[0].valor) - Number(jaPagoRows[0].total)
 
     if (saldoRestante > 0.01) {
       await pool.query(
-        `INSERT INTO pagamentos (conta_id, valor, data_pagamento) VALUES (?, ?, CURDATE())`,
-        [req.params.id, saldoRestante],
+        `INSERT INTO pagamentos (conta_id, valor, moeda, data_pagamento, conta_financeira_id) VALUES (?, ?, ?, CURDATE(), ?)`,
+        [req.params.id, saldoRestante, contaRows[0].moeda, conta_financeira_id ? Number(conta_financeira_id) : null],
       )
     }
     await recalcularStatus(Number(req.params.id))

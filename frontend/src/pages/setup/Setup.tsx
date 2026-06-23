@@ -17,8 +17,6 @@ type SetupData = {
   lembrete_proposta_dias: string
 }
 
-type Cotacao = { id: number; data: string; valor: string; fonte: string | null } | null
-
 const OBS_PADRAO = `O prazo de entrega está sujeito a alterações em caso de greve da Receita, Polícia Federal ou motivos não controlados pela Videomart Broadcast.
 A empresa não se responsabiliza por danos ou atrasos causados pela transportadora ou fiscalização.
 Prazo de entrega: 30 dias úteis
@@ -76,9 +74,6 @@ const H3: React.CSSProperties = {
 
 export function Setup() {
   const [campos, setCampos] = useState<SetupData>(SETUP_VAZIO)
-  const [cotacao, setCotacao] = useState<Cotacao>(null)
-  const [novaCotacaoData, setNovaCotacaoData] = useState(new Date().toISOString().slice(0, 10))
-  const [novaCotacaoValor, setNovaCotacaoValor] = useState('')
   const [carregando, setCarregando] = useState(true)
   const [salvando, setSalvando] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
@@ -90,14 +85,12 @@ export function Setup() {
   useEffect(() => {
     Promise.all([
       fetch('/api/setup', { credentials: 'include' }),
-      fetch('/api/setup/cotacao', { credentials: 'include' }),
       fetch('/api/setup/logo/pdf', { credentials: 'include' }),
       fetch('/api/setup/logo/interface', { credentials: 'include' }),
     ])
-      .then(async ([rs, rco, rloPdf, rloInterface]) => {
-        const [ds, dco] = await Promise.all([rs.json(), rco.json()])
+      .then(async ([rs, rloPdf, rloInterface]) => {
+        const ds = await rs.json()
         if (ds.setup) setCampos(paraForm(ds.setup))
-        setCotacao(dco.cotacao ?? null)
         if (rloPdf.ok) setLogoPdfPreview(URL.createObjectURL(await rloPdf.blob()))
         if (rloInterface.ok) setLogoInterfacePreview(URL.createObjectURL(await rloInterface.blob()))
       })
@@ -175,24 +168,6 @@ export function Setup() {
       setErro('Erro de conexão.')
     } finally {
       setSalvando(false)
-    }
-  }
-
-  async function salvarCotacao(e: React.FormEvent) {
-    e.preventDefault()
-    if (!novaCotacaoValor) return
-    const res = await fetch('/api/setup/cotacao', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ data: novaCotacaoData, valor: novaCotacaoValor, fonte: 'manual' }),
-    })
-    const d = await res.json()
-    if (res.ok) {
-      setCotacao(d.cotacao)
-      setMsg('Cotação salva.')
-    } else {
-      setErro(d.erro ?? 'Erro ao salvar cotação.')
     }
   }
 
@@ -375,31 +350,9 @@ export function Setup() {
         </div>
       </form>
 
-      {/* ── Cotação do dólar ── */}
-      <h3 style={H3}>Cotação do dólar</h3>
-      {cotacao ? (
-        <p style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--text)' }}>
-          Última cotação:{' '}
-          <strong style={{ color: 'var(--text-h)' }}>
-            R$ {Number(cotacao.valor).toLocaleString('pt-BR', { minimumFractionDigits: 4 })}
-          </strong>{' '}
-          em {cotacao.data?.slice(0, 10).split('-').reverse().join('/')}
-          {cotacao.fonte && ` (${cotacao.fonte})`}
-        </p>
-      ) : (
-        <p style={{ marginBottom: '12px', fontSize: '13px', color: 'var(--text)' }}>Nenhuma cotação cadastrada ainda.</p>
-      )}
-      <form onSubmit={salvarCotacao} style={{ display: 'flex', gap: '10px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <div className="campo" style={{ margin: 0 }}>
-          <label>Data</label>
-          <input type="date" value={novaCotacaoData} onChange={(e) => setNovaCotacaoData(e.target.value)} required />
-        </div>
-        <div className="campo" style={{ margin: 0 }}>
-          <label>Valor (R$)</label>
-          <input type="number" min="0.01" step="0.0001" placeholder="5.7500" value={novaCotacaoValor} onChange={(e) => setNovaCotacaoValor(e.target.value)} required />
-        </div>
-        <button className="botao" type="submit">Salvar cotação</button>
-      </form>
+      <p style={{ fontSize: '13px', color: 'var(--text)' }}>
+        A cotação do dólar agora é cadastrada em <Link to="/cotacao-dolar">Financeiro → Cotação do dólar</Link>.
+      </p>
     </section>
   )
 }

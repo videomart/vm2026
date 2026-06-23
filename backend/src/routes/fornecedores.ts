@@ -15,12 +15,15 @@ const CAMPOS_EDITAVEIS = [
 ] as const
 
 function dadosFornecedor(body: any) {
-  const dados: Record<string, string | null> = {}
+  const dados: Record<string, string | number | null> = {}
   for (const campo of CAMPOS_EDITAVEIS) {
     if (body[campo] !== undefined) {
       const valor = body[campo]
       dados[campo] = typeof valor === 'string' && valor.trim() === '' ? null : valor
     }
+  }
+  if (body.cliente_id !== undefined) {
+    dados.cliente_id = body.cliente_id ? Number(body.cliente_id) : null
   }
   return dados
 }
@@ -40,14 +43,24 @@ fornecedoresRouter.get('/', async (req, res) => {
   const where = condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : ''
 
   const [rows] = await pool.query(
-    `SELECT * FROM fornecedores ${where} ORDER BY razao_social`,
+    `SELECT f.*, c.razao_social AS cliente_vinculado_nome
+     FROM fornecedores f
+     LEFT JOIN clientes c ON c.id = f.cliente_id
+     ${where.replace(/\b(razao_social|nome_fantasia|cnpj_cpf|ativo)\b/g, 'f.$1')}
+     ORDER BY f.razao_social`,
     parametros,
   )
   res.json({ fornecedores: rows })
 })
 
 fornecedoresRouter.get('/:id', async (req, res) => {
-  const [rows] = await pool.query('SELECT * FROM fornecedores WHERE id = ?', [req.params.id])
+  const [rows] = await pool.query(
+    `SELECT f.*, c.razao_social AS cliente_vinculado_nome
+     FROM fornecedores f
+     LEFT JOIN clientes c ON c.id = f.cliente_id
+     WHERE f.id = ?`,
+    [req.params.id],
+  )
   const fornecedor = (rows as any[])[0]
   if (!fornecedor) return res.status(404).json({ erro: 'Fornecedor não encontrado.' })
   res.json({ fornecedor })

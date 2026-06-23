@@ -4,6 +4,7 @@ import { useGrid } from '../../hooks/useGrid'
 import { useOverflowHorizontal } from '../../hooks/useOverflowHorizontal'
 import { Paginacao } from '../../components/Paginacao'
 import { formatarMoeda, formatarData } from '../../utils/formatar'
+import { mascaraDecimal, desfazerMascaraDecimal } from '../../utils/validacoes'
 import { ModalPagamento } from './ModalPagamento'
 
 type StatusConta = 'pendente' | 'parcial' | 'pago' | 'atrasado'
@@ -12,6 +13,7 @@ type Conta = {
   id: number
   descricao: string | null
   valor: string
+  moeda: string
   vencimento: string
   status: StatusConta
   pago_em: string | null
@@ -42,6 +44,8 @@ const CLASSES_STATUS: Record<StatusConta, string> = {
   atrasado: 'badge badge-inativo',
 }
 
+const MOEDAS = ['BRL', 'USD', 'EUR']
+
 export function ListaContasPagar() {
   const [contas, setContas] = useState<Conta[]>([])
   const [filtroStatus, setFiltroStatus] = useState<StatusConta | ''>('')
@@ -50,11 +54,12 @@ export function ListaContasPagar() {
   const [erro, setErro] = useState<string | null>(null)
   const [contaModal, setContaModal] = useState<Conta | null>(null)
   const [mostrarForm, setMostrarForm] = useState(false)
+  const [editandoId, setEditandoId] = useState<number | null>(null)
 
   const grid = useGrid(contas, 'vencimento')
   const { ref: wrapperRef, temOverflow } = useOverflowHorizontal<HTMLDivElement>()
 
-  // formulário de lançamento avulso
+  // formulário de lançamento avulso / edição
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [fornecedorBusca, setFornecedorBusca] = useState('')
   const [resultadoBusca, setResultadoBusca] = useState<FornecedorBusca[]>([])
@@ -62,6 +67,7 @@ export function ListaContasPagar() {
   const [categoriaId, setCategoriaId] = useState('')
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
+  const [moeda, setMoeda] = useState('BRL')
   const [vencimento, setVencimento] = useState(new Date().toISOString().slice(0, 10))
   const [parcelas, setParcelas] = useState('1')
   const [salvando, setSalvando] = useState(false)
@@ -101,34 +107,58 @@ export function ListaContasPagar() {
     return () => clearTimeout(timer)
   }, [fornecedorBusca])
 
-  async function lancar(e: React.FormEvent) {
+  function novoLancamento() {
+    setEditandoId(null)
+    setFornecedorSelecionado(null)
+    setFornecedorBusca('')
+    setCategoriaId('')
+    setDescricao('')
+    setValor('')
+    setMoeda('BRL')
+    setVencimento(new Date().toISOString().slice(0, 10))
+    setParcelas('1')
+    setMostrarForm(true)
+    setErro(null)
+  }
+
+  function editar(c: Conta) {
+    setEditandoId(c.id)
+    setFornecedorSelecionado({ id: c.fornecedor_id, razao_social: c.fornecedor_nome })
+    setFornecedorBusca('')
+    setCategoriaId(c.categoria_despesa_id ? String(c.categoria_despesa_id) : '')
+    setDescricao(c.descricao ?? '')
+    setValor(mascaraDecimal(String(Math.round(Number(c.valor) * 100))))
+    setMoeda(c.moeda)
+    setVencimento(c.vencimento.slice(0, 10))
+    setParcelas('1')
+    setMostrarForm(true)
+    setErro(null)
+  }
+
+  async function salvar(e: React.FormEvent) {
     e.preventDefault()
-    if (!fornecedorSelecionado || !valor || !vencimento) return
+    const valorNumerico = desfazerMascaraDecimal(valor)
+    if (!fornecedorSelecionado || !valorNumerico || !vencimento) return
     setSalvando(true)
     setErro(null)
     try {
-      const res = await fetch('/api/contas-pagar', {
-        method: 'POST',
+      const res = await fetch(editandoId ? `/api/contas-pagar/${editandoId}` : '/api/contas-pagar', {
+        method: editandoId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
           fornecedor_id: fornecedorSelecionado.id,
           categoria_despesa_id: categoriaId || null,
           descricao: descricao.trim() || null,
-          valor: Number(valor),
+          valor: valorNumerico,
+          moeda,
           vencimento,
           parcelas: Number(parcelas),
         }),
       })
       const d = await res.json()
-      if (!res.ok) { setErro(d.erro ?? 'Erro ao lançar conta.'); return }
-      setMsg(`${parcelas === '1' ? 'Conta lançada' : `${parcelas} parcelas lançadas`} com sucesso.`)
-      setFornecedorSelecionado(null)
-      setFornecedorBusca('')
-      setCategoriaId('')
-      setDescricao('')
-      setValor('')
-      setParcelas('1')
+      if (!res.ok) { setErro(d.erro ?? 'Erro ao salvar conta.'); return }
+      setMsg(editandoId ? 'Conta atualizada.' : `${parcelas === '1' ? 'Conta lançada' : `${parcelas} parcelas lançadas`} com sucesso.`)
       setMostrarForm(false)
       carregar()
     } catch {
@@ -140,8 +170,11 @@ export function ListaContasPagar() {
 
   async function excluir(c: Conta) {
     if (!confirm(`Excluir a conta "${c.descricao ?? c.fornecedor_nome}"? Esta ação não pode ser desfeita.`)) return
+    setErro(null)
     const res = await fetch(`/api/contas-pagar/${c.id}`, { method: 'DELETE', credentials: 'include' })
-    if (res.ok) carregar()
+    if (res.ok) { carregar(); return }
+    const d = await res.json().catch(() => null)
+    setErro(d?.erro ?? 'Erro ao excluir conta.')
   }
 
   async function reabrir(id: number) {
@@ -160,7 +193,7 @@ export function ListaContasPagar() {
         <h2>Contas a pagar</h2>
         <div style={{ display: 'flex', gap: '8px' }}>
           <Link className="botao-secundario" to="/contas-pagar/recorrentes">Despesas recorrentes</Link>
-          <button className="botao" type="button" onClick={() => setMostrarForm((m) => !m)}>
+          <button className="botao" type="button" onClick={() => (mostrarForm ? setMostrarForm(false) : novoLancamento())}>
             {mostrarForm ? 'Cancelar' : '+ Nova conta'}
           </button>
         </div>
@@ -177,7 +210,7 @@ export function ListaContasPagar() {
 
       {mostrarForm && (
         <div style={{ background: 'var(--bg-alt)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px 16px', marginBottom: '20px' }}>
-          <form onSubmit={lancar}>
+          <form onSubmit={salvar}>
             <div className="grade-formulario" style={{ gridTemplateColumns: '2fr 1fr 2fr' }}>
               <div className="campo" style={{ position: 'relative' }}>
                 <label>Fornecedor *</label>
@@ -213,23 +246,31 @@ export function ListaContasPagar() {
                 <input className="sem-uppercase" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Compra de material" />
               </div>
             </div>
-            <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+            <div className="grade-formulario" style={{ gridTemplateColumns: '1fr 1fr 1fr 1fr' }}>
               <div className="campo">
                 <label>Valor total *</label>
-                <input type="number" min="0.01" step="0.01" value={valor} onChange={(e) => setValor(e.target.value)} required />
+                <input inputMode="numeric" value={valor} onChange={(e) => setValor(mascaraDecimal(e.target.value))} required />
               </div>
               <div className="campo">
-                <label>Vencimento (1ª parcela) *</label>
+                <label>Moeda</label>
+                <select value={moeda} onChange={(e) => setMoeda(e.target.value)}>
+                  {MOEDAS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div className="campo">
+                <label>Vencimento {!editandoId && '(1ª parcela)'} *</label>
                 <input type="date" value={vencimento} onChange={(e) => setVencimento(e.target.value)} required />
               </div>
-              <div className="campo">
-                <label>Parcelas</label>
-                <input type="number" min="1" max="36" value={parcelas} onChange={(e) => setParcelas(e.target.value)} />
-                <span style={{ fontSize: '12px', color: 'var(--text)' }}>Divide o valor total em N parcelas mensais.</span>
-              </div>
+              {!editandoId && (
+                <div className="campo">
+                  <label>Parcelas</label>
+                  <input type="number" min="1" max="36" value={parcelas} onChange={(e) => setParcelas(e.target.value)} />
+                  <span style={{ fontSize: '12px', color: 'var(--text)' }}>Divide o valor total em N parcelas mensais.</span>
+                </div>
+              )}
             </div>
             <button className="botao" type="submit" disabled={salvando || !fornecedorSelecionado}>
-              {salvando ? 'Salvando...' : 'Lançar conta'}
+              {salvando ? 'Salvando...' : editandoId ? 'Salvar alterações' : 'Lançar conta'}
             </button>
           </form>
         </div>
@@ -291,20 +332,23 @@ export function ListaContasPagar() {
                         <span style={{ fontSize: '0.85em', color: 'var(--text)' }}> ({c.numero_parcela}/{c.total_parcelas})</span>
                       )}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(c.valor)}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(c.total_pago)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(c.valor)} {c.moeda}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatarMoeda(c.total_pago)} {c.moeda}</td>
                     <td style={{ whiteSpace: 'nowrap' }}>{formatarData(c.vencimento)}</td>
                     <td><span className={CLASSES_STATUS[c.status]}>{LABELS_STATUS[c.status]}</span></td>
                     <td>
-                      <div className="acoes">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <button className="botao-link" type="button" onClick={() => setContaModal(c)}>
                           {c.status === 'pago' ? 'Ver' : 'Pagar'}
                         </button>
                         {c.status !== 'pendente' && c.status !== 'atrasado' && (
                           <button className="botao-link" type="button" onClick={() => reabrir(c.id)}>Reabrir</button>
                         )}
-                        {c.status === 'pendente' && (
-                          <button className="botao-perigo" type="button" onClick={() => excluir(c)}>Excluir</button>
+                        {Number(c.total_pago) === 0 && (
+                          <>
+                            <button className="botao-link" type="button" onClick={() => editar(c)}>Editar</button>
+                            <button className="botao-perigo" type="button" onClick={() => excluir(c)}>Excluir</button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -329,6 +373,7 @@ export function ListaContasPagar() {
           contaId={contaModal.id}
           valorTotal={Number(contaModal.valor)}
           totalPago={Number(contaModal.total_pago)}
+          moedaConta={contaModal.moeda}
           onFechar={() => setContaModal(null)}
           onAtualizado={carregar}
         />

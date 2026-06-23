@@ -22,6 +22,7 @@ import { contasPagarRouter } from './routes/contasPagar.js'
 import { fornecedoresRouter } from './routes/fornecedores.js'
 import { categoriasDespesaRouter } from './routes/categoriasDespesa.js'
 import { contasSmtpRouter } from './routes/contasSmtp.js'
+import { contasFinanceirasRouter } from './routes/contasFinanceiras.js'
 import { retomarCampanhasTravadas, verificarPropostasParadas } from './email.js'
 
 const app = express()
@@ -53,6 +54,7 @@ app.use('/api/contas-pagar', contasPagarRouter)
 app.use('/api/fornecedores', fornecedoresRouter)
 app.use('/api/categorias-despesa', categoriasDespesaRouter)
 app.use('/api/contas-smtp', contasSmtpRouter)
+app.use('/api/contas-financeiras', contasFinanceirasRouter)
 
 app.get('/api/health', async (_req, res) => {
   try {

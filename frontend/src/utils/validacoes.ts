@@ -101,3 +101,19 @@ export function mascaraCEP(valor: string): string {
   const d = digitos(valor).slice(0, 8)
   return d.replace(/^(\d{5})(\d)/, '$1-$2')
 }
+
+// Valor monetário: digita-se só números, os 2 últimos dígitos são sempre os
+// centavos (ex.: "150000" -> "1.500,00"). Formato brasileiro (ponto de milhar,
+// vírgula decimal).
+export function mascaraDecimal(valor: string): string {
+  const d = digitos(valor).replace(/^0+(?=\d)/, '').padStart(3, '0')
+  const centavos = d.slice(-2)
+  const inteiro = d.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${inteiro},${centavos}`
+}
+
+// Converte o texto mascarado (ex.: "1.500,00") de volta para number (1500).
+export function desfazerMascaraDecimal(valor: string): number {
+  const limpo = valor.replace(/\./g, '').replace(',', '.')
+  return Number(limpo) || 0
+}

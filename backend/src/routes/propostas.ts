@@ -297,9 +297,9 @@ propostasRouter.post('/:id/converter', async (req, res) => {
 
       await conn.query(
         `INSERT INTO contas_a_receber
-           (venda_id, origem_tipo, numero_parcela, total_parcelas, descricao, valor, vencimento)
-         VALUES (?, 'venda', ?, ?, ?, ?, ?)`,
-        [vendaId, i + 1, numeroParcelas, descricao, valor, vencimento.toISOString().slice(0, 10)],
+           (venda_id, origem_tipo, cliente_id, numero_parcela, total_parcelas, descricao, valor, vencimento)
+         VALUES (?, 'venda', ?, ?, ?, ?, ?, ?)`,
+        [vendaId, proposta.cliente_id, i + 1, numeroParcelas, descricao, valor, vencimento.toISOString().slice(0, 10)],
       )
     }
 

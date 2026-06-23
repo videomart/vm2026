@@ -35,6 +35,8 @@ import { ListaContasPagar } from './pages/contasPagar/ListaContasPagar'
 import { DespesasRecorrentes } from './pages/contasPagar/DespesasRecorrentes'
 import { Fornecedores } from './pages/contasPagar/Fornecedores'
 import { CategoriasDespesa } from './pages/contasPagar/CategoriasDespesa'
+import { ContasFinanceiras } from './pages/contasPagar/ContasFinanceiras'
+import { CotacaoDolar } from './pages/contasPagar/CotacaoDolar'
 import { RelatorioContasPagar } from './pages/contasPagar/RelatorioContasPagar'
 import { ImpressaoRelatorioContasPagar } from './pages/contasPagar/ImpressaoRelatorioContasPagar'
 import { LogoEmpresa } from './components/LogoEmpresa'
@@ -44,7 +46,7 @@ type SessaoStatus = 'verificando' | 'deslogado' | 'logado'
 const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : '')
 
 const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp']
-const ROTAS_FINANCEIRO = ['/contas-receber', '/contas-pagar', '/fornecedores', '/categorias-despesa']
+const ROTAS_FINANCEIRO = ['/contas-receber', '/contas-pagar', '/fornecedores', '/categorias-despesa', '/contas-financeiras', '/cotacao-dolar']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -154,6 +156,8 @@ function App() {
               <NavLink to="/contas-pagar/relatorio" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Relatório de despesas</NavLink>
               <NavLink to="/fornecedores" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Fornecedores</NavLink>
               <NavLink to="/categorias-despesa" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de despesa</NavLink>
+              <NavLink to="/contas-financeiras" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas financeiras</NavLink>
+              <NavLink to="/cotacao-dolar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Cotação do dólar</NavLink>
             </div>
           )}
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
@@ -245,6 +249,12 @@ function App() {
           )}
           {usuario.papel === 'admin' && (
             <Route path="/categorias-despesa" element={<CategoriasDespesa />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/contas-financeiras" element={<ContasFinanceiras />} />
+          )}
+          {usuario.papel === 'admin' && (
+            <Route path="/cotacao-dolar" element={<CotacaoDolar />} />
           )}
         </Routes>
       </main>
