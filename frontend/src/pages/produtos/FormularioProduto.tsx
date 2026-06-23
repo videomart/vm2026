@@ -36,7 +36,7 @@ const CAMPOS_VAZIOS: CamposFormulario = {
 
 const LABELS_TIPO_OFERTA: Record<TipoOferta, string> = {
   turnkey: 'Solução integrada (turnkey)',
-  software_venda: 'Software - venda',
+  software_venda: 'Produto-venda',
   saas: 'Software - SaaS',
 }
 
@@ -280,9 +280,9 @@ export function FormularioProduto() {
             />
           </div>
 
-          {/* Linha extra: Tipo de oferta */}
+          {/* Linha extra: Tipo do produto */}
           <div className="campo">
-            <label htmlFor="tipo_oferta">Tipo de oferta</label>
+            <label htmlFor="tipo_oferta">Tipo do produto</label>
             <select
               id="tipo_oferta"
               value={campos.tipo_oferta}
