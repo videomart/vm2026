@@ -372,7 +372,7 @@ export function FormularioProposta() {
                   id="cliente_busca"
                   placeholder="Digite razão social, contato ou e-mail para buscar..."
                   value={buscaCliente}
-                  onChange={(e) => setBuscaCliente(e.target.value)}
+                  onChange={(e) => setBuscaCliente(e.target.value.toUpperCase())}
                   autoComplete="off"
                   required={!clienteId}
                 />

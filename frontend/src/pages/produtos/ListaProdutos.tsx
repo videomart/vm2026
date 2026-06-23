@@ -61,7 +61,7 @@ export function ListaProdutos() {
           type="search"
           placeholder="Buscar por modelo, descrição, marca ou categoria"
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => setBusca(e.target.value.toUpperCase())}
         />
         <label className="opcao-checkbox">
           <input type="checkbox" checked={mostrarInativos} onChange={(e) => setMostrarInativos(e.target.checked)} />

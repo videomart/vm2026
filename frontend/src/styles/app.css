@@ -588,6 +588,7 @@
 .barra-busca input[type='search'] {
   flex: 1 1 220px;
   min-width: 0;
+  text-transform: uppercase;
 }
 
 .opcao-checkbox {

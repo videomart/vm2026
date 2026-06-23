@@ -75,7 +75,7 @@ export function ListaClientes() {
           type="search"
           placeholder="Buscar por razão social, fantasia ou CNPJ/CPF"
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => setBusca(e.target.value.toUpperCase())}
         />
         <select
           value={categoriaId}

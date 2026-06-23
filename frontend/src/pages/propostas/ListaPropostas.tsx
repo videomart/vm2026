@@ -75,7 +75,7 @@ export function ListaPropostas() {
           type="search"
           placeholder="Buscar por cliente"
           value={busca}
-          onChange={(e) => setBusca(e.target.value)}
+          onChange={(e) => setBusca(e.target.value.toUpperCase())}
         />
         <select
           value={filtroStatus}
