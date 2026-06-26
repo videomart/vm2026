@@ -37,7 +37,7 @@ function estaAtrasado(lead: Lead): boolean {
 export function ListaLeads() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [usuarioId, setUsuarioId] = useState<number | null>(null)
-  const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('novo')
+  const [filtroStatus, setFiltroStatus] = useState<StatusLead | ''>('')
   const [meusLeads, setMeusLeads] = useState(false)
   const [busca, setBusca] = useState('')
   const [carregando, setCarregando] = useState(true)
