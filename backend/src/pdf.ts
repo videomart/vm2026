@@ -87,9 +87,11 @@ export function gerarHtmlProposta(p: any, setup: any, logoBase64?: string | null
   .assinatura { margin-top: 48px; display: flex; justify-content: space-around }
   .assinatura-bloco { text-align: center; min-width: 200px }
   .assinatura-linha { border-top: 1px solid #222; padding-top: 4px; margin-top: 48px }
+  .tarja-nao-validada { background: #b91c1c; color: #fff; text-align: center; font-weight: bold; letter-spacing: 0.05em; padding: 8px; margin-bottom: 16px; border-radius: 4px; font-size: 13px }
 </style>
 </head>
 <body>
+  ${p.status === 'aberta' ? '<div class="tarja-nao-validada">PROPOSTA NÃO VALIDADA — SUJEITA A ALTERAÇÕES</div>' : ''}
   <div class="cabecalho">
     <div class="empresa">
       ${logoTag}

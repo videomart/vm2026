@@ -90,6 +90,12 @@ export function ImpressaoProposta() {
       {/* Documento */}
       <div className="impressao-documento">
 
+        {proposta.status === 'aberta' && (
+          <div className="impressao-tarja-nao-validada">
+            PROPOSTA NÃO VALIDADA — SUJEITA A ALTERAÇÕES
+          </div>
+        )}
+
         {/* Cabeçalho */}
         <div className="impressao-cabecalho">
           <div className="impressao-empresa">

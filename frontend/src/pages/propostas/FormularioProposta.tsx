@@ -718,6 +718,16 @@ export function FormularioProposta() {
             <button type="button" className="botao-secundario" onClick={() => mudarStatus('aprovada')}>Aprovar</button>
             <button type="button" className="botao-perigo" onClick={() => mudarStatus('recusada')}>Recusar</button>
             <button type="button" className="botao-secundario" onClick={converter}>Converter em venda</button>
+            <a
+              className="botao-secundario"
+              href={`/propostas/${proposta.id}/imprimir`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ textDecoration: 'none' }}
+              title="Impressão com tarja de 'proposta não validada', já que ainda não foi aprovada"
+            >
+              🖨 Imprimir (rascunho)
+            </a>
           </div>
         )}
       </form>
