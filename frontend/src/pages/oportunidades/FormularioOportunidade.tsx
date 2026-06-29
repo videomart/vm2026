@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { formatarMoeda } from '../../utils/formatar'
 import type { Cliente } from '../clientes/types'
 import type { OportunidadeDetalhe, StatusOportunidade } from './types'
 
@@ -196,7 +197,9 @@ export function FormularioOportunidade() {
             <strong>Propostas vinculadas</strong>
             <ul>
               {oportunidade.propostas.map((p) => (
-                <li key={p.id}>#{p.id} — {p.status} — {p.total}</li>
+                <li key={p.id}>
+                  <Link to={`/propostas/${p.id}`}>#{p.id}</Link> — {p.status} — {formatarMoeda(p.total)}
+                </li>
               ))}
             </ul>
           </div>
