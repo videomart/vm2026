@@ -24,7 +24,9 @@ import { fornecedoresRouter } from './routes/fornecedores.js'
 import { categoriasDespesaRouter } from './routes/categoriasDespesa.js'
 import { contasSmtpRouter } from './routes/contasSmtp.js'
 import { contasFinanceirasRouter } from './routes/contasFinanceiras.js'
-import { retomarCampanhasTravadas, verificarPropostasParadas } from './email.js'
+import { oportunidadesRouter } from './routes/oportunidades.js'
+import { retomarCampanhasTravadas } from './email.js'
+import { executarGatilhosDiarios } from './gatilhos.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 3001)
@@ -43,6 +45,7 @@ app.use('/api/leads/captura-site', cors())
 app.use('/api/leads', leadsRouter)
 app.use('/api/produtos', produtosRouter)
 app.use('/api/propostas', propostasRouter)
+app.use('/api/oportunidades', oportunidadesRouter)
 app.use('/api/usuarios', usuariosRouter)
 app.use('/api/setup', setupRouter)
 app.use('/api/marcas', marcasRouter)
@@ -84,8 +87,10 @@ app.listen(port, () => {
   console.log(`vm2026 backend ouvindo na porta ${port}`)
   retomarCampanhasTravadas()
 
-  // Verifica propostas paradas uma vez ao iniciar, depois a cada 24h — não precisa
-  // de cron externo, roda dentro do próprio processo (igual a retomarCampanhasTravadas).
-  verificarPropostasParadas()
-  setInterval(verificarPropostasParadas, 24 * 60 * 60 * 1000)
+  // Roda os gatilhos automáticos (leads sem contato, propostas paradas, parcelas
+  // vencendo, geração/checagem de cobrança SaaS) uma vez ao iniciar, depois a cada
+  // 24h — não precisa de cron externo, roda dentro do próprio processo (igual a
+  // retomarCampanhasTravadas).
+  executarGatilhosDiarios()
+  setInterval(executarGatilhosDiarios, 24 * 60 * 60 * 1000)
 })

@@ -72,7 +72,8 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
       empresa_telefone, empresa_email, empresa_site,
       fator_markup_usd, proposta_validade_dias, observacoes_padrao,
       envio_intervalo_segundos, envio_lote_tamanho, envio_lote_pausa_segundos,
-      lembrete_proposta_dias,
+      lembrete_proposta_dias, lead_sem_contato_horas, parcela_vencimento_dias_aviso,
+      saas_geracao_dias_aviso,
     } = req.body
     await pool.query(
       `UPDATE setup SET
@@ -80,7 +81,8 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
          empresa_telefone = ?, empresa_email = ?, empresa_site = ?,
          fator_markup_usd = ?, proposta_validade_dias = ?, observacoes_padrao = ?,
          envio_intervalo_segundos = ?, envio_lote_tamanho = ?, envio_lote_pausa_segundos = ?,
-         lembrete_proposta_dias = ?
+         lembrete_proposta_dias = ?, lead_sem_contato_horas = ?, parcela_vencimento_dias_aviso = ?,
+         saas_geracao_dias_aviso = ?
        WHERE id = 1`,
       [
         empresa_nome ?? 'Videomart Broadcast',
@@ -96,6 +98,9 @@ setupRouter.put('/', requireAuth, requireAdmin, async (req, res) => {
         envio_lote_tamanho ? Number(envio_lote_tamanho) : 25,
         envio_lote_pausa_segundos ? Number(envio_lote_pausa_segundos) : 300,
         lembrete_proposta_dias != null ? Number(lembrete_proposta_dias) : 3,
+        lead_sem_contato_horas != null ? Number(lead_sem_contato_horas) : 24,
+        parcela_vencimento_dias_aviso != null ? Number(parcela_vencimento_dias_aviso) : 3,
+        saas_geracao_dias_aviso != null ? Number(saas_geracao_dias_aviso) : 5,
       ],
     )
     const [rows] = await pool.query('SELECT * FROM setup WHERE id = 1')

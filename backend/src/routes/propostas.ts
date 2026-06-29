@@ -146,7 +146,7 @@ propostasRouter.post('/', async (req, res) => {
   try {
     await conn.beginTransaction()
 
-    const { cliente_id, vendedor_id, data, validade, condicoes_pagamento, observacoes, desconto, itens } = req.body
+    const { cliente_id, vendedor_id, data, validade, condicoes_pagamento, observacoes, desconto, itens, oportunidade_id } = req.body
     if (!cliente_id) return res.status(400).json({ erro: 'Cliente é obrigatório.' })
     if (!data) return res.status(400).json({ erro: 'Data é obrigatória.' })
 
@@ -155,9 +155,9 @@ propostasRouter.post('/', async (req, res) => {
     if (!listaItens.length) return res.status(400).json({ erro: 'A proposta precisa ter ao menos um item.' })
 
     const [result] = await conn.query(
-      `INSERT INTO propostas (cliente_id, vendedor_id, data, validade, condicoes_pagamento, observacoes, desconto, total)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 0)`,
-      [cliente_id, vendedor_id ?? req.usuario!.id, data, validade || null, condicoes_pagamento || null, observacoes || null, desc],
+      `INSERT INTO propostas (cliente_id, vendedor_id, oportunidade_id, data, validade, condicoes_pagamento, observacoes, desconto, total)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      [cliente_id, vendedor_id ?? req.usuario!.id, oportunidade_id ?? null, data, validade || null, condicoes_pagamento || null, observacoes || null, desc],
     ) as any[]
 
     const propostaId = result.insertId
@@ -165,6 +165,14 @@ propostasRouter.post('/', async (req, res) => {
     const total = calcTotal([somaItens], desc)
 
     await conn.query('UPDATE propostas SET total = ? WHERE id = ?', [total, propostaId])
+
+    if (oportunidade_id) {
+      await conn.query(
+        `UPDATE oportunidades SET status = 'proposta_enviada' WHERE id = ? AND status = 'prospeccao'`,
+        [oportunidade_id],
+      )
+    }
+
     await conn.commit()
 
     const [rows] = await pool.query('SELECT * FROM propostas WHERE id = ?', [propostaId])
@@ -232,16 +240,36 @@ propostasRouter.put('/:id', async (req, res) => {
 // ------------------------------------------------------------------
 propostasRouter.post('/:id/status', async (req, res) => {
   try {
-    const { status } = req.body
+    const { status, motivo_perda } = req.body
     const permitidos = ['aprovada', 'recusada']
     if (!permitidos.includes(status)) return res.status(400).json({ erro: 'Status inválido. Use "aprovada" ou "recusada".' })
 
-    const [existRows] = await pool.query('SELECT status FROM propostas WHERE id = ?', [req.params.id])
+    const [existRows] = await pool.query('SELECT status, oportunidade_id FROM propostas WHERE id = ?', [req.params.id])
     const proposta = (existRows as any[])[0]
     if (!proposta) return res.status(404).json({ erro: 'Proposta não encontrada.' })
     if (proposta.status === 'convertida') return res.status(409).json({ erro: 'Proposta já convertida em venda.' })
 
     await pool.query('UPDATE propostas SET status = ? WHERE id = ?', [status, req.params.id])
+
+    if (proposta.oportunidade_id) {
+      if (status === 'aprovada') {
+        await pool.query(`UPDATE oportunidades SET status = 'negociacao' WHERE id = ?`, [proposta.oportunidade_id])
+      } else {
+        // Só marca a oportunidade como perdida se não houver outra proposta ainda em
+        // aberto — o vendedor pode ter recusado esta e já estar negociando outra.
+        const [outrasAbertas] = await pool.query(
+          `SELECT id FROM propostas WHERE oportunidade_id = ? AND status = 'aberta' AND id != ?`,
+          [proposta.oportunidade_id, req.params.id],
+        ) as any[]
+        if (outrasAbertas.length === 0) {
+          await pool.query(
+            `UPDATE oportunidades SET status = 'perdida', motivo_perda = ? WHERE id = ?`,
+            [motivo_perda?.trim() || null, proposta.oportunidade_id],
+          )
+        }
+      }
+    }
+
     res.json({ ok: true, status })
   } catch {
     res.status(500).json({ erro: 'Erro ao atualizar status.' })
@@ -312,6 +340,13 @@ propostasRouter.post('/:id/converter', async (req, res) => {
            (venda_id, origem_tipo, cliente_id, numero_parcela, total_parcelas, descricao, valor, vencimento)
          VALUES (?, 'venda', ?, ?, ?, ?, ?, ?)`,
         [vendaId, proposta.cliente_id, i + 1, numeroParcelas, descricao, valor, vencimento.toISOString().slice(0, 10)],
+      )
+    }
+
+    if (proposta.oportunidade_id) {
+      await conn.query(
+        `UPDATE oportunidades SET status = 'ganha', venda_id = ? WHERE id = ?`,
+        [vendaId, proposta.oportunidade_id],
       )
     }
 

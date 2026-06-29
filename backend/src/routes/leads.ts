@@ -255,6 +255,19 @@ leadsRouter.post('/:id/assumir', async (req, res) => {
     return res.status(404).json({ erro: 'Lead não encontrado.' })
   }
 
+  // Oportunidade nasce aqui, não na captura — leads sem dono ainda não têm
+  // vendedor_id (NOT NULL em oportunidades), então só entram no funil formal
+  // quando alguém assume.
+  const [existente] = await pool.query('SELECT id FROM oportunidades WHERE lead_id = ?', [req.params.id]) as any[]
+  if (existente.length === 0) {
+    const [leadRows] = await pool.query('SELECT * FROM leads WHERE id = ?', [req.params.id]) as any[]
+    const lead = leadRows[0]
+    await pool.query(
+      `INSERT INTO oportunidades (lead_id, vendedor_id, titulo) VALUES (?, ?, ?)`,
+      [req.params.id, req.usuario!.id, lead.nome_empresa || lead.contato || `Lead #${lead.id}`],
+    )
+  }
+
   const [rows] = await pool.query(
     `SELECT l.*, u.nome AS vendedor_nome
        FROM leads l

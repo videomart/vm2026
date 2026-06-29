@@ -12,6 +12,8 @@ import { FormularioProduto } from './pages/produtos/FormularioProduto'
 import { ListaPropostas } from './pages/propostas/ListaPropostas'
 import { FormularioProposta } from './pages/propostas/FormularioProposta'
 import { ImpressaoProposta } from './pages/propostas/ImpressaoProposta'
+import { ListaOportunidades } from './pages/oportunidades/ListaOportunidades'
+import { FormularioOportunidade } from './pages/oportunidades/FormularioOportunidade'
 import { ListaLeads } from './pages/leads/ListaLeads'
 import { FormularioLead } from './pages/leads/FormularioLead'
 import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
@@ -144,6 +146,7 @@ function App() {
           <NavLink to="/clientes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Clientes</NavLink>
           <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
           <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
+          <NavLink to="/oportunidades" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Oportunidades</NavLink>
           <button
             className={`menu-grupo-btn${emFinanceiro ? ' ativo' : ''}`}
             type="button"
@@ -228,6 +231,9 @@ function App() {
           <Route path="/propostas" element={<ListaPropostas />} />
           <Route path="/propostas/nova" element={<FormularioProposta />} />
           <Route path="/propostas/:id" element={<FormularioProposta />} />
+          <Route path="/oportunidades" element={<ListaOportunidades />} />
+          <Route path="/oportunidades/nova" element={<FormularioOportunidade />} />
+          <Route path="/oportunidades/:id" element={<FormularioOportunidade />} />
           <Route path="/contas-receber" element={<ListaContasReceber />} />
           <Route path="/contas-receber/assinaturas" element={<ListaAssinaturas />} />
           <Route path="/contas-receber/relatorio" element={<RelatorioContasReceber />} />

@@ -328,37 +328,43 @@ contasReceberRouter.put('/assinaturas/:id/cancelar', async (req, res) => {
 })
 
 // Gera as contas do mês corrente para assinaturas ativas que ainda não têm conta no mês.
-// Chamado ao carregar a tela de contas a receber (idempotente).
+// Idempotente — chamada tanto ao carregar a tela de contas a receber quanto pelo
+// cron diário de gatilhos (backend/src/gatilhos.ts), sem duplicar geração.
+export async function gerarContasSaasDoMes(): Promise<number> {
+  const [assinaturas] = await pool.query(`
+    SELECT id, cliente_id, descricao, valor_mensal, dia_vencimento
+    FROM assinaturas
+    WHERE status = 'ativa'
+      AND data_inicio <= CURDATE()
+      AND (data_fim IS NULL OR data_fim >= CURDATE())
+  `) as any[]
+
+  let geradas = 0
+  for (const a of assinaturas) {
+    const [existeRows] = await pool.query(
+      `SELECT id FROM contas_a_receber
+       WHERE assinatura_id = ? AND YEAR(vencimento) = YEAR(CURDATE()) AND MONTH(vencimento) = MONTH(CURDATE())`,
+      [a.id],
+    ) as any[]
+    if (existeRows.length) continue
+
+    const dia = Math.min(a.dia_vencimento, 28)
+    const vencimento = `${new Date().toISOString().slice(0, 7)}-${String(dia).padStart(2, '0')}`
+
+    await pool.query(
+      `INSERT INTO contas_a_receber (origem_tipo, assinatura_id, cliente_id, descricao, valor, vencimento)
+       VALUES ('assinatura', ?, ?, ?, ?, ?)`,
+      [a.id, a.cliente_id, a.descricao, a.valor_mensal, vencimento],
+    )
+    geradas++
+  }
+
+  return geradas
+}
+
 contasReceberRouter.post('/assinaturas/gerar-mes', async (_req, res) => {
   try {
-    const [assinaturas] = await pool.query(`
-      SELECT id, cliente_id, descricao, valor_mensal, dia_vencimento
-      FROM assinaturas
-      WHERE status = 'ativa'
-        AND data_inicio <= CURDATE()
-        AND (data_fim IS NULL OR data_fim >= CURDATE())
-    `) as any[]
-
-    let geradas = 0
-    for (const a of assinaturas) {
-      const [existeRows] = await pool.query(
-        `SELECT id FROM contas_a_receber
-         WHERE assinatura_id = ? AND YEAR(vencimento) = YEAR(CURDATE()) AND MONTH(vencimento) = MONTH(CURDATE())`,
-        [a.id],
-      ) as any[]
-      if (existeRows.length) continue
-
-      const dia = Math.min(a.dia_vencimento, 28)
-      const vencimento = `${new Date().toISOString().slice(0, 7)}-${String(dia).padStart(2, '0')}`
-
-      await pool.query(
-        `INSERT INTO contas_a_receber (origem_tipo, assinatura_id, cliente_id, descricao, valor, vencimento)
-         VALUES ('assinatura', ?, ?, ?, ?, ?)`,
-        [a.id, a.cliente_id, a.descricao, a.valor_mensal, vencimento],
-      )
-      geradas++
-    }
-
+    const geradas = await gerarContasSaasDoMes()
     res.json({ ok: true, geradas })
   } catch {
     res.status(500).json({ erro: 'Erro ao gerar contas do mês.' })

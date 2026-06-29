@@ -15,6 +15,9 @@ type SetupData = {
   envio_lote_tamanho: string
   envio_lote_pausa_segundos: string
   lembrete_proposta_dias: string
+  lead_sem_contato_horas: string
+  parcela_vencimento_dias_aviso: string
+  saas_geracao_dias_aviso: string
 }
 
 const OBS_PADRAO = `O prazo de entrega está sujeito a alterações em caso de greve da Receita, Polícia Federal ou motivos não controlados pela Videomart Broadcast.
@@ -43,6 +46,9 @@ const SETUP_VAZIO: SetupData = {
   envio_lote_tamanho: '25',
   envio_lote_pausa_segundos: '300',
   lembrete_proposta_dias: '3',
+  lead_sem_contato_horas: '24',
+  parcela_vencimento_dias_aviso: '3',
+  saas_geracao_dias_aviso: '5',
 }
 
 function paraForm(s: any): SetupData {
@@ -60,6 +66,9 @@ function paraForm(s: any): SetupData {
     envio_lote_tamanho: String(s.envio_lote_tamanho ?? '25'),
     envio_lote_pausa_segundos: String(s.envio_lote_pausa_segundos ?? '300'),
     lembrete_proposta_dias: String(s.lembrete_proposta_dias ?? '3'),
+    lead_sem_contato_horas: String(s.lead_sem_contato_horas ?? '24'),
+    parcela_vencimento_dias_aviso: String(s.parcela_vencimento_dias_aviso ?? '3'),
+    saas_geracao_dias_aviso: String(s.saas_geracao_dias_aviso ?? '5'),
   }
 }
 
@@ -159,6 +168,9 @@ export function Setup() {
           envio_lote_tamanho: Number(campos.envio_lote_tamanho),
           envio_lote_pausa_segundos: Number(campos.envio_lote_pausa_segundos),
           lembrete_proposta_dias: Number(campos.lembrete_proposta_dias),
+          lead_sem_contato_horas: Number(campos.lead_sem_contato_horas),
+          parcela_vencimento_dias_aviso: Number(campos.parcela_vencimento_dias_aviso),
+          saas_geracao_dias_aviso: Number(campos.saas_geracao_dias_aviso),
         }),
       })
       const d = await res.json()
@@ -281,6 +293,31 @@ export function Setup() {
             <input type="number" min="0" step="1" value={campos.lembrete_proposta_dias} onChange={(e) => atualizar('lembrete_proposta_dias', e.target.value)} />
             <span style={{ fontSize: '12px', color: 'var(--text)' }}>
               E-mail ao vendedor quando a proposta "aberta" fica esse tempo sem atividade. Repete a cada N dias. 0 desativa.
+            </span>
+          </div>
+        </div>
+
+        <h3 style={H3}>Gatilhos automáticos</h3>
+        <div className="grade-formulario">
+          <div className="campo">
+            <label>Lead sem contato (horas)</label>
+            <input type="number" min="0" step="1" value={campos.lead_sem_contato_horas} onChange={(e) => atualizar('lead_sem_contato_horas', e.target.value)} />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              E-mail ao vendedor (e admins) quando um lead "novo"/"em contato" fica esse tempo sem atualização.
+            </span>
+          </div>
+          <div className="campo">
+            <label>Aviso de parcela vencendo (dias antes)</label>
+            <input type="number" min="0" step="1" value={campos.parcela_vencimento_dias_aviso} onChange={(e) => atualizar('parcela_vencimento_dias_aviso', e.target.value)} />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              Avisa com essa antecedência antes do vencimento. Parcelas já vencidas repetem o aviso no mesmo intervalo.
+            </span>
+          </div>
+          <div className="campo">
+            <label>Aviso de cobrança SaaS não gerada (dias antes)</label>
+            <input type="number" min="0" step="1" value={campos.saas_geracao_dias_aviso} onChange={(e) => atualizar('saas_geracao_dias_aviso', e.target.value)} />
+            <span style={{ fontSize: '12px', color: 'var(--text)' }}>
+              Avisa os admins se uma assinatura ativa não tiver cobrança gerada faltando esses dias para o vencimento mensal.
             </span>
           </div>
         </div>
