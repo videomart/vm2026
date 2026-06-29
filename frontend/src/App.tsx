@@ -145,8 +145,24 @@ function App() {
           <NavLink to="/" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Dashboard</NavLink>
           <NavLink to="/clientes" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Clientes</NavLink>
           <NavLink to="/produtos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Produtos</NavLink>
-          <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
+          <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
           <NavLink to="/oportunidades" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Oportunidades</NavLink>
+          <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
+          <button
+            className={`menu-grupo-btn${emMarketing ? ' ativo' : ''}`}
+            type="button"
+            onClick={() => setMarketingAberto((v) => !v)}
+          >
+            <span>Marketing</span>
+            <span className="menu-grupo-seta">{marketingAberto ? '▾' : '▸'}</span>
+          </button>
+          {marketingAberto && (
+            <div className="menu-subgrupo">
+              <NavLink to="/campanhas" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Campanhas</NavLink>
+              <NavLink to="/campanhas/grupos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Grupos</NavLink>
+              <NavLink to="/campanhas/templates" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Templates</NavLink>
+            </div>
+          )}
           <button
             className={`menu-grupo-btn${emFinanceiro ? ' ativo' : ''}`}
             type="button"
@@ -165,22 +181,6 @@ function App() {
               <NavLink to="/categorias-despesa" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Categorias de despesa</NavLink>
               <NavLink to="/contas-financeiras" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Contas financeiras</NavLink>
               <NavLink to="/cotacao-dolar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Cotação do dólar</NavLink>
-            </div>
-          )}
-          <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
-          <button
-            className={`menu-grupo-btn${emMarketing ? ' ativo' : ''}`}
-            type="button"
-            onClick={() => setMarketingAberto((v) => !v)}
-          >
-            <span>Marketing</span>
-            <span className="menu-grupo-seta">{marketingAberto ? '▾' : '▸'}</span>
-          </button>
-          {marketingAberto && (
-            <div className="menu-subgrupo">
-              <NavLink to="/campanhas" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Campanhas</NavLink>
-              <NavLink to="/campanhas/grupos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Grupos</NavLink>
-              <NavLink to="/campanhas/templates" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Templates</NavLink>
             </div>
           )}
           {usuario.papel === 'admin' && (
