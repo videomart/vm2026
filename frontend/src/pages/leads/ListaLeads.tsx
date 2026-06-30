@@ -195,7 +195,7 @@ export function ListaLeads() {
               </thead>
               <tbody>
                 {grid.pagina_atual.map((l) => (
-                  <tr key={l.id} className={estaAtrasado(l) ? 'linha-atrasada' : ''}>
+                  <tr key={l.id} className={l.status === 'novo' || estaAtrasado(l) ? 'linha-atrasada' : ''}>
                     <td>{l.id}</td>
                     <td>
                       {l.nome_empresa ?? '—'}

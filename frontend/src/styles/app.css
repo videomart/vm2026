@@ -679,14 +679,14 @@
   border-bottom: none;
 }
 
-/* SLA: lead novo sem vendedor há muito tempo — sobrepõe o zebrado */
+/* Lead com status "Novo" ou atrasado (sem vendedor há muito tempo) — sobrepõe o zebrado */
 .tabela tbody tr.linha-atrasada,
 .tabela tbody tr.linha-atrasada:nth-child(even) {
-  background: #371801;
+  background: #2d0337;
 }
 
 .tabela tbody tr.linha-atrasada:hover {
-  background: #371801;
+  background: #2d0337;
   filter: brightness(1.15);
 }
 
