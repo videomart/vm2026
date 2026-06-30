@@ -30,6 +30,7 @@ import { DetalheCampanha } from './pages/campanhas/DetalheCampanha'
 import { NovaCampanha } from './pages/campanhas/NovaCampanha'
 import { GruposEnvio } from './pages/campanhas/GruposEnvio'
 import { TemplatesEmail } from './pages/campanhas/TemplatesEmail'
+import { SanitizarEmails } from './pages/campanhas/SanitizarEmails'
 import { ListaContasReceber } from './pages/contasReceber/ListaContasReceber'
 import { ListaAssinaturas } from './pages/contasReceber/ListaAssinaturas'
 import { RelatorioContasReceber } from './pages/contasReceber/RelatorioContasReceber'
@@ -161,6 +162,7 @@ function App() {
               <NavLink to="/campanhas" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Campanhas</NavLink>
               <NavLink to="/campanhas/grupos" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Grupos</NavLink>
               <NavLink to="/campanhas/templates" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Templates</NavLink>
+              <NavLink to="/campanhas/sanitizar" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Sanitizar e-mails</NavLink>
             </div>
           )}
           <button
@@ -250,6 +252,7 @@ function App() {
           <Route path="/campanhas/nova" element={<NovaCampanha />} />
           <Route path="/campanhas/grupos" element={<GruposEnvio />} />
           <Route path="/campanhas/templates" element={<TemplatesEmail />} />
+          <Route path="/campanhas/sanitizar" element={<SanitizarEmails />} />
           <Route path="/campanhas/:id" element={<DetalheCampanha />} />
           {usuario.papel === 'admin' && (
             <Route path="/setup" element={<Setup />} />

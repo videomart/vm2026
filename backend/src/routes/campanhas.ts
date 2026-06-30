@@ -375,6 +375,67 @@ campanhasRouter.post('/:id/sanitizar', requireAdmin, async (req, res) => {
   }
 })
 
+// Sanitização manual: recebe uma lista de e-mails (importada de fora do sistema,
+// ex.: relatório de bounce de outra ferramenta) e aplica o mesmo tratamento do
+// /:id/sanitizar — esvazia clientes.email/contatos.email e marca email_invalido=1,
+// removendo o endereço de qualquer grupo de envio onde apareça avulso. Não depende
+// de uma campanha específica, por isso fica fora do prefixo /:id.
+campanhasRouter.post('/sanitizar-lista', requireAdmin, async (req, res) => {
+  const emailsBrutos = Array.isArray(req.body?.emails) ? req.body.emails : []
+  const emails = [...new Set(
+    emailsBrutos
+      .map((e: unknown) => String(e ?? '').trim().toLowerCase())
+      .filter((e: string) => e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)),
+  )] as string[]
+
+  if (!emails.length) {
+    return res.status(400).json({ erro: 'Nenhum e-mail válido encontrado na lista.' })
+  }
+
+  const conn = await pool.getConnection()
+  try {
+    await conn.beginTransaction()
+
+    let clientesAtualizados = 0
+    let contatosAtualizados = 0
+    let removidosDeGrupos = 0
+
+    for (const email of emails) {
+      const [rCli] = await conn.query(
+        `UPDATE clientes SET email = NULL, email_invalido = 1 WHERE email = ?`,
+        [email],
+      ) as any[]
+      clientesAtualizados += (rCli as any).affectedRows
+
+      const [rCont] = await conn.query(
+        `UPDATE contatos SET email = NULL, email_invalido = 1 WHERE email = ?`,
+        [email],
+      ) as any[]
+      contatosAtualizados += (rCont as any).affectedRows
+
+      const [rGrupo] = await conn.query(
+        `DELETE FROM grupo_emails_extra WHERE email = ?`,
+        [email],
+      ) as any[]
+      removidosDeGrupos += (rGrupo as any).affectedRows
+    }
+
+    await conn.commit()
+    res.json({
+      ok: true,
+      total_processados: emails.length,
+      clientes_atualizados: clientesAtualizados,
+      contatos_atualizados: contatosAtualizados,
+      removidos_de_grupos: removidosDeGrupos,
+    })
+  } catch {
+    await conn.rollback()
+    res.status(500).json({ erro: 'Erro ao sanitizar lista de e-mails.' })
+  } finally {
+    conn.release()
+  }
+})
+
 // Retoma uma campanha travada (ex.: backend reiniciou no meio do processamento).
 // Reprocessa quem está 'pendente'; se reincluir_erros=true, também tenta de novo
 // quem falhou antes (útil quando o erro era ratelimit/conta sem saldo, já corrigido).
