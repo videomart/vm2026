@@ -14,6 +14,8 @@ import { FormularioProposta } from './pages/propostas/FormularioProposta'
 import { ImpressaoProposta } from './pages/propostas/ImpressaoProposta'
 import { ListaOportunidades } from './pages/oportunidades/ListaOportunidades'
 import { FormularioOportunidade } from './pages/oportunidades/FormularioOportunidade'
+import { ListaIndicadores } from './pages/indicadores/ListaIndicadores'
+import { DetalheIndicador } from './pages/indicadores/DetalheIndicador'
 import { ListaLeads } from './pages/leads/ListaLeads'
 import { FormularioLead } from './pages/leads/FormularioLead'
 import { ListaUsuarios } from './pages/usuarios/ListaUsuarios'
@@ -52,6 +54,7 @@ const ITEM_NAV = ({ isActive }: { isActive: boolean }) => (isActive ? 'ativo' : 
 const ROTAS_CONFIG = ['/setup', '/usuarios', '/marcas', '/categorias', '/categorias-cliente', '/contas-smtp']
 const ROTAS_FINANCEIRO = ['/contas-receber', '/contas-pagar', '/fornecedores', '/categorias-despesa', '/contas-financeiras', '/cotacao-dolar']
 const ROTAS_MARKETING = ['/campanhas']
+const ROTAS_INDICADORES = ['/indicadores']
 
 function App() {
   const [status, setStatus] = useState<SessaoStatus>('verificando')
@@ -61,9 +64,11 @@ function App() {
   const emConfig = ROTAS_CONFIG.some((r) => location.pathname.startsWith(r))
   const emFinanceiro = ROTAS_FINANCEIRO.some((r) => location.pathname.startsWith(r))
   const emMarketing = ROTAS_MARKETING.some((r) => location.pathname.startsWith(r))
+  const emIndicadores = ROTAS_INDICADORES.some((r) => location.pathname.startsWith(r))
   const [configAberto, setConfigAberto] = useState(emConfig)
   const [financeiroAberto, setFinanceiroAberto] = useState(emFinanceiro)
   const [marketingAberto, setMarketingAberto] = useState(emMarketing)
+  const [indicadoresAberto, setIndicadoresAberto] = useState(emIndicadores)
 
   useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
@@ -149,6 +154,19 @@ function App() {
           <NavLink to="/leads" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Leads</NavLink>
           <NavLink to="/oportunidades" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Oportunidades</NavLink>
           <NavLink to="/propostas" className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Propostas</NavLink>
+          <button
+            className={`menu-grupo-btn${emIndicadores ? ' ativo' : ''}`}
+            type="button"
+            onClick={() => setIndicadoresAberto((v) => !v)}
+          >
+            <span>Indicadores</span>
+            <span className="menu-grupo-seta">{indicadoresAberto ? '▾' : '▸'}</span>
+          </button>
+          {indicadoresAberto && (
+            <div className="menu-subgrupo">
+              <NavLink to="/indicadores" end className={ITEM_NAV} onClick={() => setMenuAberto(false)}>Lista de indicadores</NavLink>
+            </div>
+          )}
           <button
             className={`menu-grupo-btn${emMarketing ? ' ativo' : ''}`}
             type="button"
@@ -242,6 +260,8 @@ function App() {
           <Route path="/contas-pagar" element={<ListaContasPagar />} />
           <Route path="/contas-pagar/recorrentes" element={<DespesasRecorrentes />} />
           <Route path="/contas-pagar/relatorio" element={<RelatorioContasPagar />} />
+          <Route path="/indicadores" element={<ListaIndicadores />} />
+          <Route path="/indicadores/:id" element={<DetalheIndicador />} />
           <Route path="/leads" element={<ListaLeads />} />
           <Route path="/leads/novo" element={<FormularioLead />} />
           <Route path="/leads/:id" element={<FormularioLead />} />
