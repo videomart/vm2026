@@ -25,6 +25,7 @@ import { categoriasDespesaRouter } from './routes/categoriasDespesa.js'
 import { contasSmtpRouter } from './routes/contasSmtp.js'
 import { contasFinanceirasRouter } from './routes/contasFinanceiras.js'
 import { oportunidadesRouter } from './routes/oportunidades.js'
+import { indicadoresRouter } from './routes/indicadores.js'
 import { retomarCampanhasTravadas } from './email.js'
 import { executarGatilhosDiarios } from './gatilhos.js'
 
@@ -47,6 +48,9 @@ app.use('/api/produtos', produtosRouter)
 app.use('/api/propostas', propostasRouter)
 app.use('/api/oportunidades', oportunidadesRouter)
 app.use('/api/usuarios', usuariosRouter)
+// Cadastro público de indicadores (sem auth) deve vir antes do middleware de auth
+app.use('/api/indicadores/cadastro', cors())
+app.use('/api/indicadores', indicadoresRouter)
 app.use('/api/setup', setupRouter)
 app.use('/api/marcas', marcasRouter)
 app.use('/api/composicoes-hardware', composicoesHardwareRouter)

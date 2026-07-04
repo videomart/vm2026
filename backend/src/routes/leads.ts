@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { pool } from '../db.js'
 import { requireAuth } from '../auth/middleware.js'
+import { enviarEmail } from '../email.js'
 
 export const leadsRouter = Router()
 
@@ -89,6 +90,9 @@ function processarCapturaSite(req: import('express').Request, res: import('expre
       return
     }
 
+    const refSlug = (origem.vm_ref as string | undefined)?.trim().toLowerCase() || null
+    const refValido = refSlug && /^[a-z0-9-]{2,80}$/.test(refSlug) ? refSlug : null
+
     await pool.query('INSERT INTO leads SET ?', [{
       nome_empresa: nomeEmpresa || null,
       contato: contato || null,
@@ -99,6 +103,7 @@ function processarCapturaSite(req: import('express').Request, res: import('expre
       assunto: assunto || null,
       mensagem: mensagem || null,
       origem: 'site',
+      indicador_slug: refValido,
       status: 'novo',
       vendedor_id: null,
     }])
@@ -220,13 +225,46 @@ leadsRouter.put('/:id', async (req, res) => {
     return res.status(400).json({ erro: 'Nenhum dado para atualizar.' })
   }
 
+  // Captura estado anterior antes de atualizar (para detectar transição → convertido)
+  const [antesRows] = await pool.query('SELECT status, indicador_slug FROM leads WHERE id = ?', [req.params.id]) as any[]
+  const antes = (antesRows as any[])[0]
+
   const [resultado] = await pool.query('UPDATE leads SET ? WHERE id = ?', [dados, req.params.id])
   if ((resultado as any).affectedRows === 0) {
     return res.status(404).json({ erro: 'Lead não encontrado.' })
   }
 
   const [rows] = await pool.query('SELECT * FROM leads WHERE id = ?', [req.params.id])
-  res.json({ lead: (rows as any[])[0] })
+  const leadAtualizado = (rows as any[])[0]
+  res.json({ lead: leadAtualizado })
+
+  // Dispara e-mail para o indicador quando o status muda para "convertido"
+  if (
+    dados.status === 'convertido' &&
+    antes?.status !== 'convertido' &&
+    antes?.indicador_slug
+  ) {
+    pool.query('SELECT nome, email FROM indicadores WHERE slug = ? AND ativo = 1', [antes.indicador_slug])
+      .then(([indRows]: any) => {
+        const ind = (indRows as any[])[0]
+        if (!ind?.email) return
+        const origem = leadAtualizado.nome_empresa || leadAtualizado.contato || `Lead #${leadAtualizado.id}`
+        enviarEmail({
+          to: ind.email,
+          subject: '[Videomart] Sua indicação foi convertida em venda!',
+          html: `
+            <p>Olá, <strong>${ind.nome}</strong>!</p>
+            <p>Temos uma ótima notícia: sua indicação de <strong>${origem}</strong>
+            foi convertida em venda pela Videomart.</p>
+            <p>Em breve nossa equipe entrará em contato para tratar da sua recompensa.</p>
+            <p>Obrigado por fazer parte do Programa de Indicação Premiada!</p>
+            <br>
+            <p>— Equipe Videomart</p>
+          `,
+        }).catch((e: any) => console.error('[indicador] falha ao enviar e-mail de conversão:', e))
+      })
+      .catch((e: any) => console.error('[indicador] falha ao buscar indicador para notificação:', e))
+  }
 })
 
 // Exclusão em massa — usada pela seleção via checkbox no grid de leads.
