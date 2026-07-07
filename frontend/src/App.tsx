@@ -137,7 +137,7 @@ function App() {
 
       <aside className={`barra-lateral${menuAberto ? ' aberta' : ''}`}>
         <div className="barra-lateral-topo">
-          <h1><LogoEmpresa />vm2026</h1>
+          <h1><LogoEmpresa /></h1>
           <button
             className="botao-fechar-menu"
             type="button"
@@ -235,6 +235,7 @@ function App() {
           <button className="botao-secundario" type="button" onClick={handleLogout}>
             Sair
           </button>
+          <span className="nome-sistema">vm2026</span>
           <span className="versao-app" title="Versão/release do build atual">v{__APP_BUILD__} · {__BUILD_TIME__}</span>
         </div>
       </aside>

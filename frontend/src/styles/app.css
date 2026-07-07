@@ -194,6 +194,15 @@
   color: var(--text-h);
 }
 
+.nome-sistema {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--text);
+  opacity: 0.7;
+}
+
 .versao-app {
   font-size: 10px !important;
   color: var(--text) !important;
